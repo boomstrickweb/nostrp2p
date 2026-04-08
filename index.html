@@ -1,0 +1,1228 @@
+<!DOCTYPE html>
+<html lang="az">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>RELAY</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&family=Bebas+Neue&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#04070a;--s1:#080d12;--s2:#0d1520;--b1:#111c28;--b2:#1a2d42;
+  --acc:#e8ff00;--pq:#b44fff;--grn:#00ff88;--red:#ff3366;--acc2:#00aaff;
+  --text:#c8ddef;--mut:#3a5570;--dim:#1e3048;
+  --mono:'IBM Plex Mono',monospace;--disp:'Bebas Neue',sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;overflow:hidden;background:var(--bg)}
+body{color:var(--text);font-family:var(--mono);font-size:13px;display:flex;flex-direction:column;padding-bottom:env(safe-area-inset-bottom)}
+.loading{position:fixed;inset:0;background:var(--bg);z-index:200;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;text-align:center;padding:20px}
+.ll{font-family:var(--disp);font-size:52px;color:var(--acc);letter-spacing:.1em}
+.ls{font-size:9px;color:var(--pq);letter-spacing:.1em;text-transform:uppercase}
+.lbar{width:220px;height:2px;background:var(--b2);border-radius:2px;overflow:hidden;margin:4px 0}
+.lfill{height:100%;background:linear-gradient(90deg,var(--acc),var(--pq));animation:lf 3s ease forwards}
+@keyframes lf{from{width:0}to{width:100%}}
+.lmsg{font-size:11px;color:var(--mut)}
+.topbar{height:52px;flex-shrink:0;background:var(--s1);border-bottom:1px solid var(--b2);display:flex;align-items:center;padding:0 14px;gap:10px}
+.logo{font-family:var(--disp);font-size:26px;color:var(--acc);letter-spacing:.1em;flex-shrink:0}
+.pqb{padding:2px 6px;background:rgba(180,79,255,.14);border:1px solid rgba(180,79,255,.3);border-radius:3px;font-size:8px;font-weight:700;color:var(--pq);letter-spacing:.1em;flex-shrink:0}
+.top-mid{flex:1;display:flex;gap:5px;overflow:hidden}
+.rp{display:flex;align-items:center;gap:4px;padding:3px 7px;border:1px solid var(--b2);border-radius:20px;font-size:9px;color:var(--mut);white-space:nowrap;transition:all .3s}
+.rp.ok{border-color:rgba(0,255,136,.4);color:var(--grn)}
+.rp.try{border-color:rgba(232,255,0,.3);color:var(--acc);animation:bl .8s infinite}
+.rp.no{border-color:rgba(255,51,102,.3);color:var(--red)}
+.rdot{width:4px;height:4px;border-radius:50%;background:currentColor}
+@keyframes bl{0%,100%{opacity:1}50%{opacity:.3}}
+.top-key{font-size:9px;color:var(--mut);border:1px solid var(--b2);border-radius:20px;padding:3px 9px;cursor:pointer;white-space:nowrap;max-width:120px;overflow:hidden;text-overflow:ellipsis;background:transparent;font-family:var(--mono);flex-shrink:0}
+.screens{flex:1;position:relative;overflow:hidden}
+.screen{position:absolute;inset:0;display:flex;flex-direction:column;overflow:hidden;transition:transform .3s cubic-bezier(.4,0,.2,1)}
+.screen.hl{transform:translateX(-100%)}
+.screen.hr{transform:translateX(100%)}
+.screen.act{transform:translateX(0)}
+.nav{height:56px;flex-shrink:0;background:var(--s1);border-top:1px solid var(--b2);display:flex}
+.nb{flex:1;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;background:transparent;border:none;cursor:pointer;color:var(--mut);font-family:var(--mono);font-size:9px;letter-spacing:.06em;text-transform:uppercase;position:relative;transition:color .2s}
+.nb.act{color:var(--acc)}
+.nb.act::after{content:'';position:absolute;bottom:0;left:20%;right:20%;height:2px;background:var(--acc);border-radius:2px 2px 0 0}
+.ni{font-size:18px;line-height:1}
+.nav-badge{position:absolute;top:8px;right:calc(50% - 14px);width:14px;height:14px;background:var(--acc);color:#000;border-radius:50%;font-size:8px;font-weight:700;display:flex;align-items:center;justify-content:center}
+#scC{background:var(--bg)}
+.clist{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.no-c{padding:40px 20px;text-align:center;color:var(--dim);line-height:2.8;font-size:13px}
+.no-c b{color:var(--acc)}
+.ci{display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid var(--b1)}
+.ci:active{background:var(--s2)}
+.av{width:42px;height:42px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-family:var(--disp);font-size:18px;flex-shrink:0}
+.ci-i{flex:1;min-width:0;cursor:pointer}
+.ci-n{font-size:14px;font-weight:600;margin-bottom:2px}
+.ci-k{font-size:9px;color:var(--mut);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ci-last{font-size:11px;color:var(--dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:2px}
+.ci-acts{display:flex;gap:5px;flex-shrink:0;align-items:center}
+.ic-btn{width:34px;height:34px;border-radius:50%;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:15px;transition:all .15s}
+.ic-btn:active{transform:scale(.9)}
+.ic-chat{background:rgba(0,170,255,.1);border:1px solid rgba(0,170,255,.22);color:var(--acc2)}
+.ic-call{background:rgba(0,255,136,.1);border:1px solid rgba(0,255,136,.22);color:var(--grn)}
+.ubadge{width:18px;height:18px;background:var(--acc);color:#000;border-radius:50%;font-size:8px;font-weight:700;display:flex;align-items:center;justify-content:center}
+#scChat{background:var(--bg);background-image:linear-gradient(rgba(0,170,255,.01) 1px,transparent 1px),linear-gradient(90deg,rgba(0,170,255,.01) 1px,transparent 1px);background-size:32px 32px}
+.chat-top{height:54px;flex-shrink:0;background:rgba(8,13,18,.97);border-bottom:1px solid var(--b1);display:flex;align-items:center;padding:0 10px;gap:8px}
+.back-btn{width:38px;height:38px;background:transparent;border:none;cursor:pointer;color:var(--acc);font-size:24px;display:flex;align-items:center;justify-content:center;border-radius:8px;flex-shrink:0}
+.back-btn:active{background:var(--s2)}
+.cp-info{flex:1;min-width:0}
+.cp-name{font-family:var(--disp);font-size:20px;letter-spacing:.05em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cp-key{font-size:9px;color:var(--mut);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.chat-call-btn{width:36px;height:36px;background:rgba(0,255,136,.1);border:1px solid rgba(0,255,136,.22);border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0;color:var(--grn)}
+.obar{display:none;padding:8px 16px;background:rgba(232,255,0,.05);border-bottom:1px solid rgba(232,255,0,.15);font-size:11px;color:var(--acc);flex-shrink:0}
+.obar.on{display:block}
+.msgs{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:10px 12px;display:flex;flex-direction:column;gap:2px}
+.msgs::-webkit-scrollbar{display:none}
+.empty-chat{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;text-align:center;padding:20px}
+.eg{font-family:var(--disp);font-size:58px;color:var(--b2)}
+.et{font-family:var(--disp);font-size:20px;color:var(--mut)}
+.es{font-size:11px;color:var(--dim);line-height:2.2}
+.es b{color:var(--pq)}
+.mw{display:flex;flex-direction:column;margin-bottom:10px;animation:pop .2s cubic-bezier(.34,1.56,.64,1)}
+@keyframes pop{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+.mw.me{align-items:flex-end}
+.mw.them{align-items:flex-start}
+.mh{font-size:10px;color:var(--mut);margin-bottom:3px;padding:0 10px;display:flex;gap:6px;align-items:center}
+.mb{max-width:78%;padding:10px 13px;line-height:1.6;font-size:14px;word-break:break-word}
+.mw.me .mb{background:rgba(232,255,0,.07);border:1px solid rgba(232,255,0,.15);border-radius:14px 4px 14px 14px}
+.mw.them .mb{background:rgba(180,79,255,.07);border:1px solid rgba(180,79,255,.18);border-radius:4px 14px 14px 14px}
+.mf{font-size:9px;color:var(--dim);padding:2px 10px;display:flex;gap:6px}
+.okc{color:var(--grn)}
+.pc{color:var(--acc)}
+.mb-img{max-width:240px;max-height:240px;border-radius:10px;cursor:pointer;display:block;object-fit:cover}
+.mb-audio{display:flex;align-items:center;gap:8px;padding:8px 12px;min-width:180px}
+.audio-play-btn{width:38px;height:38px;border-radius:50%;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;transition:all .15s}
+.audio-play-btn:active{transform:scale(.9)}
+.mw.me .audio-play-btn{background:rgba(232,255,0,.15);color:var(--acc)}
+.mw.them .audio-play-btn{background:rgba(180,79,255,.15);color:var(--pq)}
+.audio-waveform{flex:1;height:32px;display:flex;align-items:center;gap:2px}
+.wf-bar{width:3px;border-radius:2px;transition:height .1s}
+.mw.me .wf-bar{background:rgba(232,255,0,.4)}
+.mw.them .wf-bar{background:rgba(180,79,255,.4)}
+.audio-dur{font-size:10px;color:var(--mut);flex-shrink:0;min-width:30px;text-align:right}
+.prog-bubble{display:flex;flex-direction:column;gap:6px;padding:10px 13px;min-width:200px}
+.prog-name{font-size:11px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.prog-bar-wrap{height:4px;background:rgba(255,255,255,.08);border-radius:2px;overflow:hidden}
+.prog-bar{height:100%;border-radius:2px;background:var(--grn);transition:width .3s;width:0%}
+.prog-info{display:flex;justify-content:space-between;font-size:9px;color:var(--mut)}
+.iz{flex-shrink:0;background:rgba(8,13,18,.97);border-top:1px solid var(--b1);padding:8px 12px;padding-bottom:calc(8px + env(safe-area-inset-bottom,0px))}
+.irow{display:flex;gap:6px;align-items:flex-end}
+.media-btn{width:40px;height:44px;background:transparent;border:1px solid var(--b2);border-radius:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;transition:all .15s;color:var(--mut)}
+.media-btn:active{background:var(--s2);transform:scale(.95)}
+.voice-btn{color:var(--pq);border-color:rgba(180,79,255,.25)}
+.voice-btn.rec{background:rgba(255,51,102,.1);border-color:var(--red);color:var(--red);animation:prec .5s ease-in-out infinite}
+@keyframes prec{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.6;transform:scale(.95)}}
+.minp{flex:1;background:var(--s2);border:1px solid var(--b2);color:var(--text);padding:10px 13px;font-family:var(--mono);font-size:15px;border-radius:20px;outline:none;resize:none;min-height:44px;max-height:120px;line-height:1.5;-webkit-appearance:none}
+.minp:focus{border-color:var(--acc2)}
+.minp::placeholder{color:var(--dim)}
+.sbtn{width:44px;height:44px;background:var(--acc);border:none;border-radius:50%;cursor:pointer;font-size:18px;font-weight:900;color:#000;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.sbtn:active{transform:scale(.93)}
+.sbtn:disabled{background:var(--b2);color:var(--mut)}
+#scCall{background:var(--bg)}
+.call-body{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative;overflow:hidden}
+.call-bg{position:absolute;inset:0;opacity:0;transition:opacity 1s;pointer-events:none}
+.call-bg.on{opacity:1}
+.pr{position:absolute;top:50%;left:50%;transform:translate(-50%,-60%);width:180px;height:180px;border-radius:50%}
+.pr::before,.pr::after{content:'';position:absolute;inset:-30px;border-radius:50%;border:1px solid rgba(0,255,136,.2);animation:pra 2s ease-out infinite}
+.pr::after{animation-delay:.6s;border-color:rgba(0,255,136,.1);inset:-60px}
+@keyframes pra{0%{transform:scale(.8);opacity:1}100%{transform:scale(1.4);opacity:0}}
+.call-av{width:92px;height:92px;border-radius:22px;display:flex;align-items:center;justify-content:center;font-family:var(--disp);font-size:40px;margin-bottom:16px;position:relative;z-index:1}
+.call-nm{font-family:var(--disp);font-size:30px;letter-spacing:.06em;color:var(--text);margin-bottom:6px;position:relative;z-index:1}
+.call-st{font-size:11px;color:var(--mut);letter-spacing:.08em;text-transform:uppercase;position:relative;z-index:1;min-height:16px;transition:color .3s}
+.call-st.ring{color:var(--acc);animation:bl .8s infinite}
+.call-st.conn{color:var(--grn)}
+.call-st.err{color:var(--red)}
+.call-tm{font-size:26px;font-family:var(--disp);letter-spacing:.1em;color:var(--grn);margin-top:8px;position:relative;z-index:1;opacity:0;transition:opacity .5s}
+.call-tm.show{opacity:1}
+.sec-badge{display:flex;align-items:center;gap:6px;padding:5px 12px;background:rgba(180,79,255,.1);border:1px solid rgba(180,79,255,.22);border-radius:20px;font-size:8px;color:var(--pq);margin-top:12px;position:relative;z-index:1}
+.sec-dot{width:5px;height:5px;border-radius:50%;background:var(--pq);animation:bl .8s infinite}
+.viz{display:flex;align-items:center;gap:3px;height:36px;margin-top:10px;position:relative;z-index:1;opacity:0;transition:opacity .5s}
+.viz.show{opacity:1}
+.vb{width:4px;background:var(--grn);border-radius:2px;min-height:4px;transition:height .1s}
+.call-ctrls{display:flex;gap:18px;margin-top:30px;position:relative;z-index:1}
+.cc{display:flex;flex-direction:column;align-items:center;gap:4px}
+.cc-btn{width:60px;height:60px;border-radius:50%;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:22px;transition:all .15s}
+.cc-btn:active{transform:scale(.92)}
+.cc-mute{background:var(--s2);border:1px solid var(--b2);color:var(--text)}
+.cc-mute.on{background:rgba(255,51,102,.15);border-color:rgba(255,51,102,.4);color:var(--red)}
+.cc-spk{background:var(--s2);border:1px solid var(--b2);color:var(--text)}
+.cc-end{background:var(--red);color:#fff;width:68px;height:68px;font-size:26px}
+.cc-lbl{font-size:8px;color:var(--mut);font-family:var(--mono);letter-spacing:.05em;text-transform:uppercase}
+.incoming{position:fixed;inset:0;background:rgba(4,7,10,.96);z-index:150;display:none;flex-direction:column;align-items:center;justify-content:center;gap:14px;text-align:center;backdrop-filter:blur(10px)}
+.incoming.show{display:flex}
+.inc-t{font-size:10px;color:var(--mut);letter-spacing:.1em;text-transform:uppercase}
+.inc-n{font-family:var(--disp);font-size:36px;letter-spacing:.08em}
+.inc-s{font-size:10px;color:var(--pq)}
+.inc-bs{display:flex;gap:28px;margin-top:20px}
+.inc-rej{width:68px;height:68px;border-radius:50%;background:var(--red);border:none;cursor:pointer;font-size:26px;display:flex;align-items:center;justify-content:center}
+.inc-ans{width:68px;height:68px;border-radius:50%;background:var(--grn);border:none;cursor:pointer;font-size:26px;display:flex;align-items:center;justify-content:center;animation:pa 1s ease-in-out infinite}
+@keyframes pa{0%,100%{box-shadow:0 0 0 0 rgba(0,255,136,.5)}50%{box-shadow:0 0 0 14px rgba(0,255,136,0)}}
+#scS{background:var(--bg);overflow-y:auto;-webkit-overflow-scrolling:touch}
+.s-body{padding:20px 16px;display:flex;flex-direction:column;gap:14px;padding-bottom:30px}
+.card{background:var(--s1);border:1px solid var(--b2);border-radius:12px;padding:16px}
+.card-t{font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--dim);margin-bottom:10px;display:flex;align-items:center;gap:6px}
+.pqp{padding:1px 5px;background:rgba(180,79,255,.12);border:1px solid rgba(180,79,255,.25);border-radius:2px;color:var(--pq);font-size:7px;font-weight:700}
+.kval{font-size:10px;word-break:break-all;line-height:1.8;font-family:var(--mono)}
+.copy-btn{width:100%;margin-top:10px;padding:12px;background:rgba(232,255,0,.07);border:1px solid rgba(232,255,0,.22);border-radius:8px;color:var(--acc);font-family:var(--mono);font-size:12px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;cursor:pointer}
+.copy-btn:active{background:rgba(232,255,0,.14)}
+.copy-ok{background:rgba(0,255,136,.07)!important;border-color:rgba(0,255,136,.25)!important;color:var(--grn)!important}
+.inp-f{width:100%;background:var(--s2);border:1px solid var(--b2);color:var(--text);padding:12px 14px;font-family:var(--mono);font-size:13px;border-radius:8px;outline:none;-webkit-appearance:none;margin-top:6px}
+.inp-f:focus{border-color:var(--acc2)}
+.inp-f::placeholder{color:var(--dim)}
+.add-btn{width:100%;padding:14px;margin-top:10px;background:var(--acc);border:none;border-radius:8px;color:#000;font-family:var(--mono);font-size:14px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;cursor:pointer}
+.add-btn:active{transform:scale(.98)}
+.pr-row{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--s2);border-radius:8px;border:1px solid var(--b1);margin-bottom:6px}
+.pr-i{flex:1;min-width:0}
+.pr-n{font-size:12px;font-weight:600}
+.pr-k{font-size:9px;color:var(--mut);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.del-btn{background:transparent;border:none;color:var(--red);font-size:18px;cursor:pointer;padding:6px}
+.sg{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.sb{background:var(--s2);border:1px solid var(--b1);border-radius:8px;padding:10px 12px}
+.sbl{font-size:9px;color:var(--dim);margin-bottom:4px}
+.sbv{font-size:13px;font-weight:700}
+.reset-btn{width:100%;padding:12px;background:transparent;border:1px solid rgba(255,51,102,.3);border-radius:8px;color:var(--red);font-family:var(--mono);font-size:12px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;cursor:pointer}
+.img-viewer{position:fixed;inset:0;background:rgba(0,0,0,.95);z-index:300;display:none;flex-direction:column;align-items:center;justify-content:center}
+.img-viewer.show{display:flex}
+.img-viewer img{max-width:95vw;max-height:85vh;border-radius:8px;object-fit:contain}
+.iv-close{position:absolute;top:16px;right:16px;width:40px;height:40px;background:rgba(255,255,255,.1);border:none;border-radius:50%;cursor:pointer;color:#fff;font-size:20px;display:flex;align-items:center;justify-content:center}
+::-webkit-scrollbar{display:none}
+</style>
+</head>
+<body>
+
+<div class="loading" id="loading">
+  <div class="ll">RELAY</div>
+  <div class="ls">⬡ POST-QUANTUM SECURE</div>
+  <div class="lbar"><div class="lfill"></div></div>
+  <div class="lmsg" id="lmsg">ML-KEM-768 + SHAKE-128/256...</div>
+</div>
+
+<div class="img-viewer" id="imgV">
+  <button class="iv-close" onclick="closeImg()">✕</button>
+  <img id="imgVImg" src="" alt="">
+</div>
+
+<div class="incoming" id="incoming">
+  <div class="inc-t">Gələn zəng</div>
+  <div class="av" id="incAv" style="width:76px;height:76px;border-radius:18px;font-size:34px;margin:0 auto"></div>
+  <div class="inc-n" id="incName">—</div>
+  <div class="inc-s">🔐 ML-KEM-768 · IP qorumalı · P2P</div>
+  <div class="inc-bs">
+    <button class="inc-rej" onclick="rejectCall()">📵</button>
+    <button class="inc-ans" onclick="answerCall()">📞</button>
+  </div>
+</div>
+
+<input type="file" id="fileInput" accept="image/*,audio/*,video/*,.pdf,.zip,.doc,.docx" style="display:none" onchange="onFile(event)">
+
+<div class="topbar">
+  <div class="logo">RELAY</div>
+  <div class="pqb">ML-KEM-768</div>
+  <div class="top-mid" id="rpills"></div>
+  <button class="top-key" id="topKey" onclick="goSettings()">key...</button>
+</div>
+
+<div class="screens">
+  <div class="screen act" id="scC">
+    <div class="clist" id="clist"><div class="no-c">Hələ kontakt yoxdur.<br><b>⚙</b> Ayarlardan peer əlavə et.</div></div>
+  </div>
+
+  <div class="screen hr" id="scChat">
+    <div class="chat-top">
+      <button class="back-btn" onclick="goContacts()">‹</button>
+      <div class="cp-info">
+        <div class="cp-name" id="chatName" style="color:var(--mut)">—</div>
+        <div class="cp-key" id="chatKey">—</div>
+      </div>
+      <button class="chat-call-btn" onclick="startCallFromChat()">📞</button>
+    </div>
+    <div class="obar" id="obar">⚡ Offline — relay qoşulanda göndəriləcək.</div>
+    <div class="msgs" id="msgs">
+      <div class="empty-chat">
+        <div class="eg">⬡</div><div class="et">RELAY</div>
+        <div class="es">Mətn · Foto · Səs mesajı · Zəng<br><b>ML-KEM-768 · P2P · Relay görmür</b></div>
+      </div>
+    </div>
+    <div class="iz">
+      <div class="irow">
+        <button class="media-btn" onclick="document.getElementById('fileInput').click()">📎</button>
+        <button class="media-btn voice-btn" id="voiceBtn"
+          ontouchstart="startRec(event)" ontouchend="stopRec(event)"
+          onmousedown="startRec(event)" onmouseup="stopRec(event)"
+          onmouseleave="stopRec(event)">🎙</button>
+        <textarea class="minp" id="minp" placeholder="Mesaj yaz..." oninput="rsz(this)" rows="1"></textarea>
+        <button class="sbtn" id="sbtn" onclick="sendTxt()" disabled>▶</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="screen hr" id="scCall">
+    <div class="call-body">
+      <div class="call-bg" id="callBg"><div class="pr"></div></div>
+      <div class="call-av" id="callAv"></div>
+      <div class="call-nm" id="callNm">—</div>
+      <div class="call-st" id="callSt">—</div>
+      <div class="call-tm" id="callTm">00:00</div>
+      <div class="sec-badge"><div class="sec-dot"></div>ML-KEM-768 · DTLS-SRTP · IP Protected</div>
+      <div class="viz" id="viz"></div>
+      <div class="call-ctrls">
+        <div class="cc"><button class="cc-btn cc-mute" id="muteBtn" onclick="toggleMute()">🎙</button><span class="cc-lbl">Mikrofon</span></div>
+        <div class="cc"><button class="cc-btn cc-end" onclick="endCall()">📵</button><span class="cc-lbl">Bitir</span></div>
+        <div class="cc"><button class="cc-btn cc-spk" id="spkBtn" onclick="toggleSpk()">🔊</button><span class="cc-lbl">Səs</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="screen hr" id="scS">
+    <div class="s-body">
+      <div class="card">
+        <div class="card-t">Mənim Açarlarım <span class="pqp">FIPS 202/203</span></div>
+        <div style="font-size:8px;color:var(--dim);margin-bottom:4px">Nostr (secp256k1)</div>
+        <div class="kval" style="color:var(--acc)" id="myNostr">—</div>
+        <div style="font-size:8px;color:var(--dim);margin:8px 0 4px">ML-KEM-768 Public Key</div>
+        <div class="kval" style="color:var(--pq);font-size:9px" id="myKyber">—</div>
+        <button class="copy-btn" id="copyBtn" onclick="copyBundle()">📋 &nbsp;Key Bundle Kopyala (JSON)</button>
+        <div style="font-size:9px;color:var(--dim);margin-top:6px">Bu JSON-u peer-ə göndər.</div>
+      </div>
+      <div class="card">
+        <div class="card-t">Peer Əlavə Et</div>
+        <div style="font-size:9px;color:var(--dim)">Peer-in key bundle JSON-unu yapışdır:</div>
+        <textarea class="inp-f" id="peerInp" placeholder='{"nostr":"...","kyber":"..."}' rows="3" style="resize:none"></textarea>
+        <button class="add-btn" onclick="addPeer()">＋ &nbsp;Əlavə Et</button>
+      </div>
+      <div class="card">
+        <div class="card-t">Peer-lər (<span id="peerCount">0</span>)</div>
+        <div id="peersDiv"><div style="font-size:11px;color:var(--dim)">Hələ peer yoxdur.</div></div>
+      </div>
+      <div class="card">
+        <div class="card-t">Status</div>
+        <div class="sg">
+          <div class="sb"><div class="sbl">Relay</div><div class="sbv" style="color:var(--grn)" id="sRelay">0/3</div></div>
+          <div class="sb"><div class="sbl">P2P (DataCh)</div><div class="sbv" style="color:var(--acc2)" id="sDC">—</div></div>
+        </div>
+        <div style="margin-top:10px;font-size:9px;color:var(--dim);line-height:2.4">
+          📷 Foto ≤2MB → Nostr relay (offline)<br>
+          📷 Foto >2MB → WebRTC DataChannel P2P<br>
+          🎙 Səs ≤48KB → Nostr relay (offline)<br>
+          🎙 Səs >48KB → WebRTC DataChannel P2P<br>
+          📞 Zəng → WebRTC P2P + DTLS-SRTP<br>
+          🔐 Hər şey ML-KEM-768 + AES-256-GCM
+        </div>
+      </div>
+      <button class="reset-btn" onclick="clearData()">⚠ &nbsp;Sıfırla</button>
+    </div>
+  </div>
+</div>
+
+<div class="nav">
+  <button class="nb act" id="nbC" onclick="goContacts()">
+    <div class="ni">👥</div><span>Kontaktlar</span>
+    <div class="nav-badge" id="navBadge" style="display:none">0</div>
+  </button>
+  <button class="nb" id="nbS" onclick="goSettings()">
+    <div class="ni">⚙</div><span>Ayarlar</span>
+  </button>
+</div>
+
+<script>
+'use strict';
+
+// ══════════════════════════════════════════════════════
+//  FIPS 202 — SHA3 / SHAKE (NIST verified ✅)
+// ══════════════════════════════════════════════════════
+const _RC=[0x0000000000000001n,0x0000000000008082n,0x800000000000808An,0x8000000080008000n,0x000000000000808Bn,0x0000000080000001n,0x8000000080008081n,0x8000000000008009n,0x000000000000008An,0x0000000000000088n,0x0000000080008009n,0x000000008000000An,0x000000008000808Bn,0x800000000000008Bn,0x8000000000008089n,0x8000000000008003n,0x8000000000008002n,0x8000000000000080n,0x000000000000800An,0x800000008000000An,0x8000000080008081n,0x8000000000008080n,0x0000000080000001n,0x8000000080008008n];
+const _M=0xFFFFFFFFFFFFFFFFn;
+const _rt=(x,n)=>((x<<BigInt(n))|(x>>BigInt(64-n)))&_M;
+function _kF(A){for(let r=0;r<24;r++){const C=[0,1,2,3,4].map(x=>A[x]^A[x+5]^A[x+10]^A[x+15]^A[x+20]);const D=C.map((_,x)=>C[(x+4)%5]^_rt(C[(x+1)%5],1));for(let i=0;i<25;i++)A[i]^=D[i%5];let[t,x,y]=[A[1],1,0];for(let i=0;i<24;i++){const[X,Y]=[y,(2*x+3*y)%5];[t,A[X+5*Y]]=[A[X+5*Y],_rt(t,((i+1)*(i+2)/2)%64)];[x,y]=[X,Y];}for(let y=0;y<5;y++){const rr=[0,1,2,3,4].map(x=>A[x+5*y]);for(let x=0;x<5;x++)A[x+5*y]=rr[x]^(~rr[(x+1)%5]&rr[(x+2)%5]);}A[0]^=_RC[r];}}
+function _sp(rate,input,delim,outLen){const rb=rate/8,st=new Array(25).fill(0n);let off=0;while(off<input.length){const bl=Math.min(rb,input.length-off);for(let i=0;i<bl;i++)st[Math.floor(i/8)]^=BigInt(input[off+i])<<BigInt((i%8)*8);if(bl===rb)_kF(st);off+=bl;}const pp=input.length%rb;st[Math.floor(pp/8)]^=BigInt(delim)<<BigInt((pp%8)*8);st[Math.floor((rb-1)/8)]^=0x80n<<BigInt(((rb-1)%8)*8);_kF(st);const out=new Uint8Array(outLen);let op=0;while(op<outLen){for(let i=0;i<rb&&op<outLen;i++)out[op++]=Number((st[Math.floor(i/8)]>>BigInt((i%8)*8))&0xFFn);if(op<outLen)_kF(st);}return out;}
+const SHAKE128=(i,l)=>_sp(1344,i,0x1F,l);
+const SHAKE256=(i,l)=>_sp(1088,i,0x1F,l);
+const SHA3_256=i=>_sp(1088,i,0x06,32);
+const SHA3_512=i=>_sp(576,i,0x06,64);
+
+// ══════════════════════════════════════════════════════
+//  secp256k1 + Schnorr BIP340
+// ══════════════════════════════════════════════════════
+const _SP=0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEFFFFFC2Fn;
+const _SN=0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141n;
+const _sm=(a,m=_SP)=>((a%m)+m)%m;
+const _spw=(b,e,m=_SP)=>{let r=1n;b=_sm(b,m);while(e>0n){if(e&1n)r=_sm(r*b,m);e>>=1n;b=_sm(b*b,m);}return r;};
+class _SPt{constructor(x,y){this.x=x;this.y=y;}static Z=new _SPt(0n,0n);isZ(){return this.x===0n&&this.y===0n;}add(o){if(this.isZ())return o;if(o.isZ())return this;if(this.x===o.x){if(this.y!==o.y)return _SPt.Z;const l=_sm(3n*this.x*this.x*_spw(2n*this.y,_SP-2n));const x=_sm(l*l-2n*this.x);return new _SPt(x,_sm(l*(this.x-x)-this.y));}const l=_sm((o.y-this.y)*_spw(o.x-this.x,_SP-2n));const x=_sm(l*l-this.x-o.x);return new _SPt(x,_sm(l*(this.x-x)-this.y));}mul(n){let r=_SPt.Z,p=new _SPt(this.x,this.y);n=_sm(n,_SN);while(n>0n){if(n&1n)r=r.add(p);p=p.add(p);n>>=1n;}return r;}}
+const _SG=new _SPt(0x79BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81798n,0x483ADA7726A3C4655DA4FBFC0E1108A8FD17B448A68554199C47D08FFB10D4B8n);
+const rnd=n=>crypto.getRandomValues(new Uint8Array(n));
+const hex=b=>Array.from(b).map(x=>x.toString(16).padStart(2,'0')).join('');
+const fhex=s=>new Uint8Array((s.length%2?'0'+s:s).match(/../g).map(x=>parseInt(x,16)));
+const _bi=b=>BigInt('0x'+(hex(b)||'0'));
+const _bb=(n,l=32)=>fhex(n.toString(16).padStart(l*2,'0'));
+const cat=(...a)=>{const r=new Uint8Array(a.reduce((s,x)=>s+x.length,0));let o=0;a.forEach(x=>{r.set(x,o);o+=x.length;});return r;};
+const te=s=>new TextEncoder().encode(s);
+const td=b=>new TextDecoder().decode(b);
+async function wsha256(d){return new Uint8Array(await crypto.subtle.digest('SHA-256',typeof d==='string'?te(d):d));}
+function genNKP(){let p;do{p=_bi(rnd(32));}while(p===0n||p>=_SN);const priv=p.toString(16).padStart(64,'0');return{priv,pub:_SG.mul(p).x.toString(16).padStart(64,'0')};}
+async function schnorrSign(h,priv){const p=_sm(BigInt('0x'+priv),_SN);const P=_SG.mul(p);const pp=P.y%2n===0n?p:_SN-p;const Px=_bb(P.x);const aux=rnd(32);const t0=await wsha256('BIP0340/aux');const ta=await wsha256(cat(t0,t0,aux));const tB=_bb(pp^_bi(ta));const t1=await wsha256('BIP0340/nonce');const kh=await wsha256(cat(t1,t1,tB,Px,h));let k=_sm(_bi(kh),_SN);if(k===0n)throw new Error('k=0');const R=_SG.mul(k);if(R.y%2n!==0n)k=_SN-k;const Rx=_bb(R.x);const t2=await wsha256('BIP0340/challenge');const eH=await wsha256(cat(t2,t2,Rx,Px,h));return hex(cat(Rx,_bb(_sm(k+_sm(_bi(eH),_SN)*pp,_SN))));}
+async function buildEv(kind,content,tags,priv,pub){const ev={pubkey:pub,created_at:Math.floor(Date.now()/1000),kind,tags,content};const id=await wsha256(JSON.stringify([0,ev.pubkey,ev.created_at,ev.kind,ev.tags,ev.content]));ev.id=hex(id);ev.sig=await schnorrSign(id,priv);return ev;}
+
+// ══════════════════════════════════════════════════════
+//  FIPS 203 — ML-KEM-768
+// ══════════════════════════════════════════════════════
+const KQ=3329,KN=256,KK=3,ET1=2,ET2=2,DU=10,DV=4;
+const km=a=>{a=a%KQ;return a<0?a+KQ:a;};
+const kpw=(b,e)=>{let r=1;b=km(b);while(e>0){if(e&1)r=km(r*b);b=km(b*b);e>>=1;}return r;};
+const kbrv=x=>{let r=0;for(let i=0;i<7;i++){r=(r<<1)|(x&1);x>>=1;}return r;};
+const KZ=new Int32Array(128);for(let i=0;i<128;i++)KZ[i]=kpw(17,kbrv(i));
+const knt=f=>{const a=Int32Array.from(f);let i=1;for(let l=128;l>=2;l>>=1)for(let s=0;s<KN;s+=2*l){const z=KZ[i++];for(let j=s;j<s+l;j++){const t=km(z*a[j+l]);a[j+l]=km(a[j]-t);a[j]=km(a[j]+t);}}return a;};
+const kit=f=>{const a=Int32Array.from(f);let i=127;for(let l=2;l<=128;l<<=1)for(let s=0;s<KN;s+=2*l){const z=KZ[i--];for(let j=s;j<s+l;j++){const t=a[j];a[j]=km(t+a[j+l]);a[j+l]=km(z*km(a[j+l]-t));}}const iv=kpw(128,KQ-2);for(let j=0;j<KN;j++)a[j]=km(a[j]*iv);return a;};
+const kbm=(a,b)=>{const c=new Int32Array(KN);for(let i=0;i<128;i++){const g=kpw(17,2*kbrv(i)+1);c[2*i]=km(km(a[2*i]*b[2*i])+km(km(a[2*i+1]*b[2*i+1])*g));c[2*i+1]=km(km(a[2*i]*b[2*i+1])+km(a[2*i+1]*b[2*i]));}return c;};
+const kpa=(a,b)=>{const c=new Int32Array(KN);for(let i=0;i<KN;i++)c[i]=km(a[i]+b[i]);return c;};
+const kps=(a,b)=>{const c=new Int32Array(KN);for(let i=0;i<KN;i++)c[i]=km(a[i]-b[i]);return c;};
+const kcp=(p,d)=>{const c=new Int32Array(KN);for(let i=0;i<KN;i++)c[i]=Math.round(p[i]*(1<<d)/KQ)&((1<<d)-1);return c;};
+const kdp=(p,d)=>{const c=new Int32Array(KN);for(let i=0;i<KN;i++)c[i]=Math.round(p[i]*KQ/(1<<d));return c;};
+function kenc(p,d){const o=new Uint8Array(KN*d/8);for(let i=0;i<KN;i++){const v=p[i]&((1<<d)-1);for(let b=0;b<d;b++){const pos=i*d+b;if(v&(1<<b))o[pos>>3]|=1<<(pos&7);}}return o;}
+function kdec(bytes,d){const p=new Int32Array(KN);for(let i=0;i<KN;i++){let v=0;for(let b=0;b<d;b++){const pos=i*d+b;v|=((bytes[pos>>3]>>(pos&7))&1)<<b;}p[i]=v;}return p;}
+const kH=d=>SHA3_256(d);
+const kG=d=>{const h=SHA3_512(d);return[h.slice(0,32),h.slice(32)];};
+const kPRF=(s,b,l)=>SHAKE256(cat(s,new Uint8Array([b])),l);
+const kXOF=(rho,i,j,l)=>SHAKE128(cat(rho,new Uint8Array([i,j])),l);
+function kSU(b){const p=new Int32Array(KN);let j=0,pos=0;while(j<KN&&pos+2<b.length){const d1=b[pos]|((b[pos+1]&0xF)<<8);const d2=(b[pos+1]>>4)|(b[pos+2]<<4);pos+=3;if(d1<KQ)p[j++]=d1;if(j<KN&&d2<KQ)p[j++]=d2;}return p;}
+function kCBD(eta,b){const p=new Int32Array(KN);for(let i=0;i<KN;i++){let a=0,bb=0;for(let j=0;j<eta;j++){const idx=2*eta*i+j;a+=(b[idx>>3]>>(idx&7))&1;}for(let j=0;j<eta;j++){const idx=2*eta*i+eta+j;bb+=(b[idx>>3]>>(idx&7))&1;}p[i]=km(a-bb);}return p;}
+function kGA(rho,tr){const A=[];for(let i=0;i<KK;i++){A[i]=[];for(let j=0;j<KK;j++){const bi=tr?j:i,bj=tr?i:j;A[i][j]=kSU(kXOF(rho,bi,bj,672));}}return A;}
+function kemKG(){const d=rnd(32),z=rnd(32);const[rho,sigma]=kG(d);const A=kGA(rho,false);const sh=[],eh=[];for(let i=0;i<KK;i++) sh[i]=knt(kCBD(ET1,kPRF(sigma,i,64*ET1)));for(let i=0;i<KK;i++) eh[i]=knt(kCBD(ET1,kPRF(sigma,KK+i,64*ET1)));const th=[];for(let i=0;i<KK;i++){let s=new Int32Array(KN);for(let j=0;j<KK;j++)s=kpa(s,kbm(A[i][j],sh[j]));th[i]=kpa(s,eh[i]);}const pk=new Uint8Array(KK*384+32);for(let i=0;i<KK;i++) pk.set(kenc(th[i],12),i*384);pk.set(rho,KK*384);const hpk=kH(pk);const sk=new Uint8Array(KK*384+pk.length+32+32);for(let i=0;i<KK;i++) sk.set(kenc(sh[i],12),i*384);sk.set(pk,KK*384);sk.set(hpk,KK*384+pk.length);sk.set(z,KK*384+pk.length+32);return{pk:hex(pk),sk:hex(sk)};}
+function kemE(pkH){const pk=fhex(pkH),m=rnd(32),hpk=kH(pk);const[Kss,r]=kG(cat(m,hpk));const th=[];for(let i=0;i<KK;i++) th[i]=kdec(pk.slice(i*384,(i+1)*384),12);const rho=pk.slice(KK*384,KK*384+32);const A=kGA(rho,true);const rh=[],e1=[];for(let i=0;i<KK;i++) rh[i]=knt(kCBD(ET1,kPRF(r,i,64*ET1)));for(let i=0;i<KK;i++) e1[i]=kCBD(ET2,kPRF(r,KK+i,64*ET2));const e2=kCBD(ET2,kPRF(r,2*KK,64*ET2));const u=[];for(let i=0;i<KK;i++){let s=new Int32Array(KN);for(let j=0;j<KK;j++)s=kpa(s,kbm(A[i][j],rh[j]));u[i]=kpa(kit(s),e1[i]);}let vs=new Int32Array(KN);for(let i=0;i<KK;i++) vs=kpa(vs,kbm(th[i],rh[i]));const mu=new Int32Array(KN);for(let i=0;i<KN;i++) mu[i]=((m[i>>3]>>(i&7))&1)*Math.round(KQ/2);const v=kpa(kpa(kit(vs),e2),mu);const ct=new Uint8Array(KK*KN*DU/8+KN*DV/8);for(let i=0;i<KK;i++) ct.set(kenc(kcp(u[i],DU),DU),i*KN*DU/8);ct.set(kenc(kcp(v,DV),DV),KK*KN*DU/8);return{ct:hex(ct),K:Kss};}
+function kemD(ctH,skH){const ct=fhex(ctH),sk=fhex(skH);const sh=[];for(let i=0;i<KK;i++) sh[i]=kdec(sk.slice(i*384,(i+1)*384),12);const u=[];for(let i=0;i<KK;i++) u[i]=kdp(kdec(ct.slice(i*KN*DU/8,(i+1)*KN*DU/8),DU),DU);const v=kdp(kdec(ct.slice(KK*KN*DU/8,KK*KN*DU/8+KN*DV/8),DV),DV);let inner=new Int32Array(KN);for(let i=0;i<KK;i++) inner=kpa(inner,kbm(sh[i],knt(u[i])));const w=kps(v,kit(inner));const mp=new Uint8Array(32);for(let i=0;i<KN;i++){if(Math.round(w[i]*2/KQ)&1) mp[i>>3]|=1<<(i&7);}const pk_=sk.slice(KK*384,KK*384+KK*384+32);const[Kss]=kG(cat(mp,kH(pk_)));return Kss;}
+
+// AES-256-GCM
+async function aesEnc(k,data){
+  const key=await crypto.subtle.importKey('raw',k,{name:'AES-GCM'},false,['encrypt']);
+  const iv=rnd(12);
+  const input=typeof data==='string'?te(data):(data instanceof Uint8Array?data:new Uint8Array(data));
+  const ct=await crypto.subtle.encrypt({name:'AES-GCM',iv},key,input);
+  return{iv:hex(iv),ct:hex(new Uint8Array(ct))};
+}
+async function aesDec(k,ivH,ctH){
+  const key=await crypto.subtle.importKey('raw',k,{name:'AES-GCM'},false,['decrypt']);
+  return new Uint8Array(await crypto.subtle.decrypt({name:'AES-GCM',iv:fhex(ivH)},key,fhex(ctH)));
+}
+
+// PQ encrypt for JSON payloads (text messages, signaling)
+async function pqEncObj(pkH,obj){
+  const{ct,K}=kemE(pkH);
+  const{iv,ct:aesCt}=await aesEnc(K,JSON.stringify(obj));
+  return JSON.stringify({v:3,kem:ct,iv,ct:aesCt});
+}
+async function pqDecObj(skH,payload){
+  const{v,kem,iv,ct}=JSON.parse(payload);
+  if(v!==3)throw new Error('v');
+  const K=kemD(kem,skH);
+  const bytes=await aesDec(K,iv,ct);
+  return JSON.parse(td(bytes));
+}
+
+// PQ encrypt raw bytes (media)
+async function pqEncBytes(pkH,bytes){
+  const{ct,K}=kemE(pkH);
+  const{iv,ct:aesCt}=await aesEnc(K,bytes);
+  return{kem:ct,iv,ct:aesCt};
+}
+async function pqDecBytes(skH,kem,iv,ct){
+  const K=kemD(kem,skH);
+  return aesDec(K,iv,ct);
+}
+
+// ══════════════════════════════════════════════════════
+//  iOS audio compatibility
+// ══════════════════════════════════════════════════════
+function getAudioMime(){
+  const types=['audio/webm;codecs=opus','audio/webm','audio/mp4;codecs=mp4a.40.2','audio/mp4','audio/aac'];
+  for(const t of types) if(typeof MediaRecorder!=='undefined'&&MediaRecorder.isTypeSupported(t))return t;
+  return 'audio/mp4'; // iOS fallback
+}
+const AUDIO_MIME=getAudioMime();
+
+// Convert blob to base64 data URL (cross-platform playback)
+function blobToDataURL(blob){
+  return new Promise(resolve=>{
+    const r=new FileReader();
+    r.onload=()=>resolve(r.result);
+    r.readAsDataURL(blob);
+  });
+}
+
+// ══════════════════════════════════════════════════════
+//  CRDT
+// ══════════════════════════════════════════════════════
+class CRDT{
+  constructor(id){this.id=id;this.lam=0;this.vc={[id]:0};this.ops=[];this.mc=0;}
+  add(type,payload,to){this.lam++;this.vc[this.id]=this.lam;const op={id:hex(rnd(16)),from:this.id,to,lam:this.lam,vc:{...this.vc},type,payload,ts:Date.now()};this.ops.push(op);this._save();return op;}
+  merge(op){if(this.ops.find(o=>o.id===op.id))return false;this.lam=Math.max(this.lam,op.lam)+1;Object.keys(op.vc||{}).forEach(k=>this.vc[k]=Math.max(this.vc[k]||0,op.vc[k]||0));this.ops.push(op);this.ops.sort((a,b)=>a.lam!==b.lam?a.lam-b.lam:a.from.localeCompare(b.from));this.mc++;this._save();return true;}
+  chat(a,b){return this.ops.filter(o=>(o.from===a&&o.to===b)||(o.from===b&&o.to===a));}
+  _save(){try{localStorage.setItem('rl3_crdt',JSON.stringify({lam:String(this.lam),vc:this.vc,ops:this.ops.map(o=>{const s={...o,payload:{...o.payload}};delete s.payload._dataURL;return s;}),mc:this.mc}));}catch{}}
+  static load(id){const c=new CRDT(id);try{const d=JSON.parse(localStorage.getItem('rl3_crdt'));if(d){c.lam=Number(d.lam)||0;c.vc=d.vc||{[id]:0};c.ops=d.ops||[];c.mc=d.mc||0;}}catch{}return c;}
+}
+
+// ══════════════════════════════════════════════════════
+//  RELAY CHUNKED TRANSFER (for media <= 2MB)
+// ══════════════════════════════════════════════════════
+const RELAY_CHUNK=48*1024; // 48KB per chunk event
+const MAX_RELAY=2*1024*1024; // 2MB threshold
+const inChunkBuf={}; // {transferId: {chunks, meta, received}}
+
+// Send file via relay (chunked Nostr events)
+async function sendViaRelay(toPub,toKyberPk,data,meta){
+  const total=Math.ceil(data.length/RELAY_CHUNK);
+  const transferId=meta.transferId||hex(rnd(16));
+
+  // Send header first
+  await nostrPub(toPub,toKyberPk,{type:'media_start',transferId,total,...meta},25051);
+
+  // Send chunks
+  for(let i=0;i<total;i++){
+    const chunk=data.slice(i*RELAY_CHUNK,(i+1)*RELAY_CHUNK);
+    const{kem,iv,ct}=await pqEncBytes(toKyberPk,chunk);
+    await nostrPub(toPub,toKyberPk,{type:'media_chunk',transferId,index:i,total,kem,iv,ct},25051);
+    // Small delay between chunks
+    await new Promise(r=>setTimeout(r,50));
+  }
+}
+
+async function handleRelayChunk(fp,payload){
+  const{type,transferId}=payload;
+
+  if(type==='media_start'){
+    inChunkBuf[transferId]={
+      meta:payload,chunks:new Array(payload.total),received:0
+    };
+    return;
+  }
+
+  if(type==='media_chunk'){
+    const buf=inChunkBuf[transferId];if(!buf)return;
+    try{
+      const decrypted=await pqDecBytes(KKkeys.sk,payload.kem,payload.iv,payload.ct);
+      buf.chunks[payload.index]=decrypted;
+      buf.received++;
+
+      // Update progress in UI
+      const op=C.ops.find(o=>o.id===transferId);
+      if(op){
+        op.payload._progress=buf.received/payload.total;
+        renderMsgs();
+      }
+
+      if(buf.received>=payload.total){
+        // Reassemble
+        const total=buf.chunks.reduce((s,c)=>s+(c?.length||0),0);
+        const data=new Uint8Array(total);
+        let off=0;buf.chunks.forEach(c=>{if(c){data.set(c,off);off+=c.length;}});
+        delete inChunkBuf[transferId];
+
+        const blob=new Blob([data],{type:buf.meta.mimeType});
+        const dataURL=await blobToDataURL(blob);
+        const mediaType=buf.meta.mimeType.startsWith('image')?'image':buf.meta.mimeType.startsWith('audio')?'voice':'file';
+        const op2={id:transferId,from:fp,to:NK.pub,lam:C.lam+1,vc:{[fp]:C.lam+1},type:mediaType,payload:{_dataURL:dataURL,name:buf.meta.fileName,size:buf.meta.fileSize,mimeType:buf.meta.mimeType,duration:buf.meta.duration},ts:Date.now()};
+        C.merge(op2);
+        renderMsgs();
+      }
+    }catch(e){console.error('chunk decrypt fail',e);}
+  }
+}
+
+// ══════════════════════════════════════════════════════
+//  NOSTR
+// ══════════════════════════════════════════════════════
+const RELAYS=['wss://relay.damus.io','wss://nos.lol','wss://relay.nostr.info'];
+const WS={};const CONN=new Set();
+
+function relConn(url){
+  setRp(url,'try');let ws;
+  try{ws=new WebSocket(url);}catch{setRp(url,'no');return;}
+  const t=setTimeout(()=>{if(ws.readyState!==1){ws.close();setRp(url,'no');}},9000);
+  ws.onopen=()=>{
+    clearTimeout(t);WS[url]=ws;CONN.add(url);setRp(url,'ok');
+    // Subscribe to: kind 4 (DMs), 25050 (call signaling), 25051 (media chunks)
+    ws.send(JSON.stringify(['REQ',hex(rnd(8)),{kinds:[4,25050,25051],'#p':[NK.pub],limit:100}]));
+    iStat();if(OQ.length)setTimeout(flushOQ,300);
+  };
+  ws.onmessage=async e=>{try{const m=JSON.parse(e.data);if(m[0]==='EVENT'&&m[2])await onEv(m[2]);}catch{}};
+  ws.onclose=()=>{CONN.delete(url);delete WS[url];setRp(url,'no');iStat();setTimeout(()=>relConn(url),7000);};
+  ws.onerror=()=>clearTimeout(t);
+}
+function resubAll(){Object.keys(WS).forEach(url=>{const ws=WS[url];if(ws&&ws.readyState===1)ws.send(JSON.stringify(['REQ',hex(rnd(8)),{kinds:[4,25050,25051],'#p':[NK.pub],limit:100}]));});}
+
+async function nostrPub(toPub,toKyberPk,obj,kind=4){
+  const encrypted=await pqEncObj(toKyberPk,obj);
+  const ev=await buildEv(kind,encrypted,[['p',toPub]],NK.priv,NK.pub);
+  let s=0;Object.values(WS).forEach(ws=>{if(ws.readyState===1){ws.send(JSON.stringify(['EVENT',ev]));s++;}});
+  return s;
+}
+
+async function onEv(ev){
+  if(ev.pubkey===NK.pub)return;
+  const fp=ev.pubkey;
+  if(!KKkeys)return;
+  let obj;
+  try{obj=await pqDecObj(KKkeys.sk,ev.content);}catch{return;}
+
+  if(ev.kind===4){
+    // Text message
+    if(!obj.id||!obj.type)return;
+    if(!C.merge(obj))return;
+    if(!PEERS[fp]){PEERS[fp]={name:fp.slice(0,10),color:COLS[Object.keys(PEERS).length%COLS.length],kyberPk:''};savePeers();renderContacts();}
+    if(AP===fp)renderMsgs();else{renderContacts();showBadge();}
+  }
+  else if(ev.kind===25050){
+    await onSig(fp,obj);
+  }
+  else if(ev.kind===25051){
+    await handleRelayChunk(fp,obj);
+    // Auto-add peer if unknown
+    if(!PEERS[fp]&&obj.type==='media_start'){
+      PEERS[fp]={name:fp.slice(0,10),color:COLS[Object.keys(PEERS).length%COLS.length],kyberPk:''};
+      savePeers();renderContacts();
+    }
+  }
+}
+
+// ══════════════════════════════════════════════════════
+//  WebRTC — fixed race condition + DataChannel for large files
+// ══════════════════════════════════════════════════════
+let pcm=null; // PCManager instance
+
+class PCManager{
+  constructor(){
+    this.pc=null;
+    this.dc=null;
+    this.iceQueue=[];
+    this.remoteDescSet=false;
+    this.peerPub=null;
+  }
+  async init(peerPub,withAudio){
+    this.peerPub=peerPub;
+    this.iceQueue=[];
+    this.remoteDescSet=false;
+    if(this.pc){this.pc.close();}
+    this.pc=new RTCPeerConnection({iceServers:[
+      {urls:'stun:stun.l.google.com:19302'},
+      {urls:'stun:stun1.l.google.com:19302'},
+      {urls:'stun:stun.cloudflare.com:3478'},
+    ]});
+    if(withAudio){
+      if(!localStream) localStream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true},video:false});
+      localStream.getTracks().forEach(t=>this.pc.addTrack(t,localStream));
+      remoteAudio=new Audio();remoteAudio.autoplay=true;
+      this.pc.ontrack=e=>{remoteAudio.srcObject=e.streams[0];startViz();};
+    }
+    // Create DataChannel (caller side)
+    this.dc=this.pc.createDataChannel('media',{ordered:true});
+    this._setupDC(this.dc);
+    // Receive DataChannel (callee side)
+    this.pc.ondatachannel=e=>{this.dc=e.channel;this._setupDC(this.dc);};
+    this.pc.onicecandidate=async e=>{
+      if(!e.candidate)return;
+      if(!this._safeCand(e.candidate.candidate))return;
+      const peer=PEERS[this.peerPub];if(!peer?.kyberPk)return;
+      await nostrPub(this.peerPub,peer.kyberPk,{type:'ice',candidate:e.candidate.toJSON()},25050);
+    };
+    this.pc.onconnectionstatechange=()=>{
+      const s=this.pc?.connectionState;
+      document.getElementById('sDC').textContent=s||'—';
+      if(s==='connected'&&callState==='connecting'){
+        callState='connected';
+        setCallSt('Bağlandı · DTLS-SRTP','conn');
+        startTimer();
+        document.getElementById('callBg').classList.add('on');
+      }
+      else if(s==='failed'||s==='disconnected') endCall();
+    };
+    return this;
+  }
+  _safeCand(c){if(!c)return false;if(c.includes('typ relay'))return true;if(c.includes('.local'))return true;return false;}
+  _setupDC(ch){
+    ch.binaryType='arraybuffer';
+    ch.onmessage=e=>onDCMsg(JSON.parse(typeof e.data==='string'?e.data:td(new Uint8Array(e.data))));
+    ch.onopen=()=>{document.getElementById('sDC').textContent='açıq';if(dcQueue.length)processDCQueue();};
+  }
+  async setRemoteDesc(desc){
+    await this.pc.setRemoteDescription(desc);
+    this.remoteDescSet=true;
+    // Flush ICE queue
+    for(const c of this.iceQueue){try{await this.pc.addIceCandidate(c);}catch{}}
+    this.iceQueue=[];
+  }
+  async addICE(cand){
+    if(this.remoteDescSet){try{await this.pc.addIceCandidate(cand);}catch{}}
+    else this.iceQueue.push(cand);
+  }
+  dcReady(){return this.dc&&this.dc.readyState==='open';}
+  send(data){if(this.dcReady())this.dc.send(data);}
+  close(){if(this.pc){this.pc.close();this.pc=null;this.dc=null;}}
+}
+
+// DataChannel queue for large files
+let dcQueue=[];
+let inP2PTransfers={};
+
+async function onDCMsg(msg){
+  if(msg.type==='transfer_start'){
+    inP2PTransfers[msg.transferId]={meta:msg,chunks:new Array(msg.total),received:0};
+  }
+  else if(msg.type==='chunk'){
+    const buf=inP2PTransfers[msg.transferId];if(!buf)return;
+    try{
+      const dec=await pqDecBytes(KKkeys.sk,msg.kem,msg.iv,msg.ct);
+      buf.chunks[msg.index]=dec;buf.received++;
+      const op=C.ops.find(o=>o.id===msg.transferId);
+      if(op){op.payload._progress=buf.received/msg.total;renderMsgs();}
+      if(buf.received>=msg.total){
+        const total=buf.chunks.reduce((s,c)=>s+(c?.length||0),0);
+        const data=new Uint8Array(total);let off=0;
+        buf.chunks.forEach(c=>{if(c){data.set(c,off);off+=c.length;}});
+        delete inP2PTransfers[msg.transferId];
+        const blob=new Blob([data],{type:buf.meta.mimeType});
+        const dataURL=await blobToDataURL(blob);
+        const mediaType=buf.meta.mimeType.startsWith('image')?'image':buf.meta.mimeType.startsWith('audio')?'voice':'file';
+        const src=callPeer||AP;
+        const op2={id:msg.transferId,from:src||'unknown',to:NK.pub,lam:C.lam+1,vc:{},type:mediaType,payload:{_dataURL:dataURL,name:buf.meta.fileName,size:buf.meta.fileSize,mimeType:buf.meta.mimeType,duration:buf.meta.duration},ts:Date.now()};
+        if(src)op2.vc[src]=op2.lam;
+        C.merge(op2);renderMsgs();
+      }
+    }catch(e){console.error('P2P chunk decrypt',e);}
+  }
+}
+
+async function processDCQueue(){
+  while(dcQueue.length>0&&pcm?.dcReady()){
+    const{toPub,file}=dcQueue.shift();
+    await _sendP2P(toPub,file);
+  }
+}
+
+const CHUNK_P2P=16*1024;
+async function _sendP2P(toPub,file){
+  const peer=PEERS[toPub];if(!peer?.kyberPk)return;
+  const ab=await file.arrayBuffer();
+  const data=new Uint8Array(ab);
+  const total=Math.ceil(data.length/CHUNK_P2P);
+  const transferId=hex(rnd(16));
+
+  // Add optimistic local message
+  const dataURL=await blobToDataURL(file);
+  const mediaType=file.type.startsWith('image')?'image':file.type.startsWith('audio')?'voice':'file';
+  const localOp=C.add(mediaType,{_dataURL:dataURL,name:file.name,size:file.size,mimeType:file.type,_progress:0},toPub);
+  localOp.id=transferId;
+  C._save();renderMsgs();
+
+  pcm.send(JSON.stringify({type:'transfer_start',transferId,total,fileName:file.name,fileSize:file.size,mimeType:file.type}));
+
+  for(let i=0;i<total;i++){
+    const chunk=data.slice(i*CHUNK_P2P,(i+1)*CHUNK_P2P);
+    const{kem,iv,ct}=await pqEncBytes(peer.kyberPk,chunk);
+    pcm.send(JSON.stringify({type:'chunk',transferId,index:i,total,kem,iv,ct}));
+    if(i%4===3)await new Promise(r=>setTimeout(r,5));
+  }
+
+  // Update local op as sent
+  const op=C.ops.find(o=>o.id===transferId);
+  if(op)delete op.payload._progress;
+  renderMsgs();
+}
+
+// ══════════════════════════════════════════════════════
+//  Voice recording (iOS + Android fixed)
+// ══════════════════════════════════════════════════════
+let mediaRec=null,voiceChunks=[],recStartTime=0;
+
+function startRec(e){
+  e.preventDefault();
+  if(mediaRec||!AP)return;
+  recStartTime=Date.now();
+  document.getElementById('voiceBtn').classList.add('rec');
+  navigator.mediaDevices.getUserMedia({audio:true}).then(stream=>{
+    voiceChunks=[];
+    const opts={};
+    if(MediaRecorder.isTypeSupported(AUDIO_MIME))opts.mimeType=AUDIO_MIME;
+    mediaRec=new MediaRecorder(stream,opts);
+    mediaRec.ondataavailable=e=>{if(e.data.size>0)voiceChunks.push(e.data);};
+    mediaRec.start(200);
+  }).catch(err=>{
+    document.getElementById('voiceBtn').classList.remove('rec');
+    alert('Mikrofon icazəsi lazımdır: '+err.message);
+  });
+}
+
+async function stopRec(e){
+  e.preventDefault();
+  document.getElementById('voiceBtn').classList.remove('rec');
+  if(!mediaRec||mediaRec.state==='inactive')return;
+  const dur=Math.round((Date.now()-recStartTime)/1000);
+  if(dur<1){mediaRec.stop();mediaRec.stream.getTracks().forEach(t=>t.stop());mediaRec=null;return;}
+
+  return new Promise(resolve=>{
+    mediaRec.onstop=async()=>{
+      const mimeType=voiceChunks[0]?.type||AUDIO_MIME||'audio/mp4';
+      const blob=new Blob(voiceChunks,{type:mimeType});
+      mediaRec.stream.getTracks().forEach(t=>t.stop());
+      mediaRec=null;
+      if(!AP){resolve();return;}
+      const peer=PEERS[AP];if(!peer?.kyberPk){resolve();return;}
+
+      const ab=await blob.arrayBuffer();
+      const data=new Uint8Array(ab);
+
+      // Convert to data URL for cross-platform playback
+      const dataURL=await blobToDataURL(blob);
+
+      if(data.length<=48*1024){
+        // Short voice → relay (works offline)
+        const{kem,iv,ct}=await pqEncBytes(peer.kyberPk,data);
+        const op=C.add('voice',{kem,iv,ct,mimeType,duration:dur,size:data.length,_dataURL:dataURL},AP);
+        renderMsgs();
+        if(CONN.size>0){
+          // Send without _dataURL (don't send base64 over relay)
+          const sendOp={...op,payload:{kem,iv,ct,mimeType,duration:dur,size:data.length}};
+          nostrPub(AP,peer.kyberPk,sendOp,4).catch(()=>{OQ.push({to:AP,op:sendOp});saveOQ();});
+        }else{
+          const sendOp={...op,payload:{kem,iv,ct,mimeType,duration:dur,size:data.length}};
+          OQ.push({to:AP,op:sendOp});saveOQ();
+          document.getElementById('obar').classList.add('on');
+        }
+      } else {
+        // Long voice → P2P
+        const voiceFile=new File([blob],'voice.'+mimeType.split('/')[1].split(';')[0],{type:mimeType});
+        await sendMedia(AP,voiceFile);
+      }
+      resolve();
+    };
+    mediaRec.stop();
+  });
+}
+
+// Play voice message
+async function playVoice(opId){
+  const op=C.ops.find(o=>o.id===opId);if(!op)return;
+  const p=op.payload;
+
+  let dataURL=p._dataURL;
+  if(!dataURL&&p.kem&&p.iv&&p.ct){
+    // Decrypt first
+    try{
+      const bytes=await pqDecBytes(KKkeys.sk,p.kem,p.iv,p.ct);
+      const blob=new Blob([bytes],{type:p.mimeType||'audio/mp4'});
+      dataURL=await blobToDataURL(blob);
+      p._dataURL=dataURL; // cache
+    }catch(e){alert('Şifrə açılmadı: '+e.message);return;}
+  }
+  if(!dataURL){alert('Audio tapılmadı.');return;}
+
+  // Use data URL for iOS compatibility
+  const audio=new Audio(dataURL);
+  audio.play().catch(err=>{
+    // iOS requires user gesture — create and click
+    const btn=document.getElementById('apb_'+opId);
+    if(btn)btn.textContent='⏸';
+    alert('iOS: Yenidən cəhd et');
+  });
+}
+
+// ══════════════════════════════════════════════════════
+//  Media send routing
+// ══════════════════════════════════════════════════════
+async function sendMedia(toPub,file){
+  const peer=PEERS[toPub];if(!peer?.kyberPk){alert('Peer-in ML-KEM key-i yoxdur!');return;}
+
+  if(file.size<=MAX_RELAY){
+    // <= 2MB → relay (chunked, works offline)
+    const ab=await file.arrayBuffer();
+    const data=new Uint8Array(ab);
+    const transferId=hex(rnd(16));
+    const mediaType=file.type.startsWith('image')?'image':file.type.startsWith('audio')?'voice':'file';
+
+    // Local preview
+    const dataURL=await blobToDataURL(file);
+    const op=C.add(mediaType,{_dataURL:dataURL,name:file.name,size:file.size,mimeType:file.type,_progress:0},toPub);
+    op.id=transferId;C._save();renderMsgs();
+
+    if(CONN.size>0){
+      await sendViaRelay(toPub,peer.kyberPk,data,{
+        transferId,fileName:file.name,fileSize:file.size,mimeType:file.type,
+        mediaType,duration:null
+      });
+      // Update op
+      const localOp=C.ops.find(o=>o.id===transferId);
+      if(localOp)delete localOp.payload._progress;
+      renderMsgs();
+    }else{
+      // Queue for later
+      OQ.push({type:'media',to:toPub,data,meta:{transferId,fileName:file.name,fileSize:file.size,mimeType:file.type,mediaType,duration:null}});
+      saveOQ();document.getElementById('obar').classList.add('on');
+    }
+  } else {
+    // > 2MB → P2P DataChannel
+    if(!pcm?.dcReady()){
+      // Need to establish P2P first
+      dcQueue.push({toPub,file});
+      await ensureP2P(toPub);
+    } else {
+      await _sendP2P(toPub,file);
+    }
+  }
+}
+
+async function ensureP2P(peerPub){
+  const peer=PEERS[peerPub];if(!peer?.kyberPk)return;
+  pcm=new PCManager();
+  await pcm.init(peerPub,false);
+  const offer=await pcm.pc.createOffer();
+  await pcm.pc.setLocalDescription(offer);
+  await nostrPub(peerPub,peer.kyberPk,{type:'dc_offer',sdp:sanitizeSDP(offer.sdp),from:NK.pub},25050);
+}
+
+function sanitizeSDP(sdp){return sdp.replace(/^c=IN IP[46] \S+$/mg,'c=IN IP4 0.0.0.0').replace(/^(o=\S+ \S+ \S+ IN IP[46] )\S+$/mg,'$10.0.0.0');}
+
+// ══════════════════════════════════════════════════════
+//  Call signaling — fixed race condition
+// ══════════════════════════════════════════════════════
+let localStream=null,remoteAudio=null;
+let callPeer=null,callState='idle',muted=false;
+let timerInt=null,timerSecs=0,pendingOffer=null,vizInt=null;
+
+async function startCall(peerPub){
+  const peer=PEERS[peerPub];if(!peer?.kyberPk){alert('ML-KEM key lazımdır!');return;}
+  callPeer=peerPub;callState='calling';
+  showCallScreen(peerPub,'Zəng edilir...','ring');
+  pcm=new PCManager();
+  await pcm.init(peerPub,true);
+  const offer=await pcm.pc.createOffer({offerToReceiveAudio:true});
+  await pcm.pc.setLocalDescription(offer);
+  await nostrPub(peerPub,peer.kyberPk,{type:'offer',sdp:sanitizeSDP(offer.sdp),from:NK.pub},25050);
+  setCallSt('Gözlənilir...','ring');
+}
+
+function startCallFromChat(){if(AP)startCall(AP);}
+
+async function answerCall(){
+  document.getElementById('incoming').classList.remove('show');
+  if(!pendingOffer)return;
+  const{sdp,from}=pendingOffer;pendingOffer=null;
+  callPeer=from;callState='connecting';
+  showCallScreen(from,'Cavab verilir...','ring');
+  const peer=PEERS[from];
+  pcm=new PCManager();
+  await pcm.init(from,true);
+  // Set remote description FIRST, then create answer
+  await pcm.setRemoteDesc(new RTCSessionDescription({type:'offer',sdp}));
+  const answer=await pcm.pc.createAnswer();
+  await pcm.pc.setLocalDescription(answer);
+  await nostrPub(from,peer.kyberPk,{type:'answer',sdp:sanitizeSDP(answer.sdp),from:NK.pub},25050);
+  setCallSt('Bağlanır...','ring');
+}
+
+function rejectCall(){
+  document.getElementById('incoming').classList.remove('show');
+  if(pendingOffer?.from){const p=PEERS[pendingOffer.from];if(p?.kyberPk)nostrPub(pendingOffer.from,p.kyberPk,{type:'reject',from:NK.pub},25050).catch(()=>{});}
+  pendingOffer=null;
+}
+
+async function onSig(fp,payload){
+  const{type}=payload;
+  if(type==='offer'){
+    const peer=PEERS[fp];if(!peer)return;
+    pendingOffer={sdp:payload.sdp,from:fp};
+    // Don't immediately show if already in call
+    if(callState==='idle')showIncoming(fp);
+  }
+  else if(type==='answer'){
+    if(!pcm||callState!=='calling')return;
+    callState='connecting';
+    await pcm.setRemoteDesc(new RTCSessionDescription({type:'answer',sdp:payload.sdp}));
+    setCallSt('Bağlanır...','ring');
+  }
+  else if(type==='dc_offer'){
+    const peer=PEERS[fp];if(!peer?.kyberPk)return;
+    if(!pcm)pcm=new PCManager();
+    if(!pcm.pc)await pcm.init(fp,false);
+    await pcm.setRemoteDesc(new RTCSessionDescription({type:'offer',sdp:payload.sdp}));
+    const answer=await pcm.pc.createAnswer();
+    await pcm.pc.setLocalDescription(answer);
+    await nostrPub(fp,peer.kyberPk,{type:'dc_answer',sdp:sanitizeSDP(answer.sdp),from:NK.pub},25050);
+  }
+  else if(type==='dc_answer'){
+    if(!pcm)return;
+    await pcm.setRemoteDesc(new RTCSessionDescription({type:'answer',sdp:payload.sdp}));
+  }
+  else if(type==='ice'){
+    if(!pcm)return;
+    await pcm.addICE(new RTCIceCandidate(payload.candidate));
+  }
+  else if(type==='reject'){setCallSt('Rədd edildi','err');setTimeout(()=>endCall(),1500);}
+  else if(type==='end'){endCall();}
+}
+
+function endCall(){
+  if(callPeer&&PEERS[callPeer]?.kyberPk&&callState!=='idle')
+    nostrPub(callPeer,PEERS[callPeer].kyberPk,{type:'end',from:NK.pub},25050).catch(()=>{});
+  if(pcm&&callState!=='idle'){pcm.close();pcm=null;}
+  if(localStream){localStream.getTracks().forEach(t=>t.stop());localStream=null;}
+  if(remoteAudio){remoteAudio.srcObject=null;remoteAudio=null;}
+  stopTimer();stopViz();
+  callPeer=null;callState='idle';muted=false;
+  document.getElementById('muteBtn').textContent='🎙';
+  document.getElementById('muteBtn').classList.remove('on');
+  document.getElementById('callBg').classList.remove('on');
+  document.getElementById('callTm').classList.remove('show');
+  document.getElementById('viz').classList.remove('show');
+  goContacts();
+}
+
+function toggleMute(){if(!localStream)return;muted=!muted;localStream.getTracks().forEach(t=>t.enabled=!muted);const btn=document.getElementById('muteBtn');btn.textContent=muted?'🔇':'🎙';btn.classList.toggle('on',muted);}
+function toggleSpk(){if(!remoteAudio)return;remoteAudio.muted=!remoteAudio.muted;document.getElementById('spkBtn').textContent=remoteAudio.muted?'🔕':'🔊';}
+
+function startViz(){
+  document.getElementById('viz').classList.add('show');
+  try{const ctx=new AudioContext();const src=ctx.createMediaStreamSource(remoteAudio.srcObject);const an=ctx.createAnalyser();an.fftSize=32;src.connect(an);const viz=document.getElementById('viz');viz.innerHTML='';for(let i=0;i<8;i++){const b=document.createElement('div');b.className='vb';b.style.height='4px';viz.appendChild(b);}const bars=viz.querySelectorAll('.vb');const data=new Uint8Array(an.frequencyBinCount);vizInt=setInterval(()=>{an.getByteFrequencyData(data);bars.forEach((b,i)=>{b.style.height=(4+Math.floor((data[i]||0)/255*32))+'px';});},80);}catch{}
+}
+function stopViz(){clearInterval(vizInt);vizInt=null;document.getElementById('viz').innerHTML='';}
+function startTimer(){timerSecs=0;document.getElementById('callTm').classList.add('show');timerInt=setInterval(()=>{timerSecs++;const m=String(Math.floor(timerSecs/60)).padStart(2,'0'),s=String(timerSecs%60).padStart(2,'0');document.getElementById('callTm').textContent=m+':'+s;},1000);}
+function stopTimer(){clearInterval(timerInt);timerInt=null;timerSecs=0;document.getElementById('callTm').textContent='00:00';}
+
+// ══════════════════════════════════════════════════════
+//  APP STATE
+// ══════════════════════════════════════════════════════
+const COLS=['#e8ff00','#00aaff','#00ff88','#ff5588','#ff9900','#cc44ff'];
+let NK=null,KKkeys=null,C=null,PEERS={},AP=null,OQ=[];
+let curScreen='contacts';
+const savePeers=()=>{try{localStorage.setItem('rl3_peers',JSON.stringify(PEERS));}catch{}};
+const saveOQ=()=>{try{localStorage.setItem('rl3_oq',JSON.stringify(OQ));}catch{}};
+
+async function boot(){
+  setLM('Nostr keypair...');
+  let nk=null;try{nk=JSON.parse(localStorage.getItem('rl3_nkey'));}catch{}
+  NK=nk?.priv&&nk?.pub?nk:genNKP();
+  if(!nk)localStorage.setItem('rl3_nkey',JSON.stringify(NK));
+  setLM('ML-KEM-768 keypair (FIPS 203)...');
+  let kk=null;try{kk=JSON.parse(localStorage.getItem('rl3_kkey'));}catch{}
+  if(kk?.pk&&kk?.sk){KKkeys=kk;}else{KKkeys=kemKG();localStorage.setItem('rl3_kkey',JSON.stringify(KKkeys));}
+  try{PEERS=JSON.parse(localStorage.getItem('rl3_peers'))||{};}catch{PEERS={};}
+  try{OQ=JSON.parse(localStorage.getItem('rl3_oq'))||[];}catch{OQ=[];}
+  C=CRDT.load(NK.pub);
+  document.getElementById('myNostr').textContent=NK.pub;
+  document.getElementById('myKyber').textContent=KKkeys.pk.slice(0,64)+'...'+KKkeys.pk.slice(-16);
+  document.getElementById('topKey').textContent=NK.pub.slice(0,10)+'...';
+  document.getElementById('rpills').innerHTML=RELAYS.map(u=>`<div class="rp" id="rp${btoa(u).replace(/\W/g,'')}"><div class="rdot"></div>${rn(u)}</div>`).join('');
+  renderContacts();
+  document.getElementById('loading').style.display='none';
+  RELAYS.forEach(relConn);
+}
+function setLM(m){document.getElementById('lmsg').textContent=m;}
+
+function addPeer(){
+  const inp=document.getElementById('peerInp');
+  let b;try{b=JSON.parse(inp.value.trim());}catch{alert('JSON formatı yanlışdır.');return;}
+  const nk=b.nostr?.toLowerCase().replace(/[^a-f0-9]/g,'');
+  if(!nk||nk.length!==64){alert('Nostr key 64 hex olmalıdır.');return;}
+  if(!b.kyber||b.kyber.length<100){alert('ML-KEM key çatışmır.');return;}
+  if(nk===NK.pub){alert('Bu sənin öz key-indir!');return;}
+  if(PEERS[nk]){alert('Artıq var.');return;}
+  PEERS[nk]={name:nk.slice(0,10),color:COLS[Object.keys(PEERS).length%COLS.length],kyberPk:b.kyber};
+  savePeers();inp.value='';resubAll();renderContacts();renderPeers();
+}
+function delPeer(k){if(!confirm('Silinsin?'))return;delete PEERS[k];savePeers();if(AP===k)AP=null;renderContacts();renderPeers();}
+function clearData(){if(!confirm('Hər şey silinsin?'))return;localStorage.clear();location.reload();}
+
+async function sendTxt(){
+  const inp=document.getElementById('minp');
+  const txt=inp.value.trim();if(!txt||!AP)return;
+  const peer=PEERS[AP];if(!peer?.kyberPk){alert('Peer-in ML-KEM key-i yoxdur!');return;}
+  document.getElementById('sbtn').disabled=true;
+  const op=C.add('text',{text:txt},AP);
+  renderMsgs();
+  if(CONN.size>0){try{await nostrPub(AP,peer.kyberPk,op,4);}catch{OQ.push({to:AP,op});saveOQ();}}
+  else{OQ.push({to:AP,op});saveOQ();document.getElementById('obar').classList.add('on');}
+  iStat();inp.value='';inp.style.height='auto';
+  document.getElementById('sbtn').disabled=false;inp.focus();
+}
+
+async function flushOQ(){
+  if(!OQ.length)return;
+  const q=[...OQ];OQ=[];saveOQ();
+  for(const item of q){
+    if(item.type==='media'){
+      const peer=PEERS[item.to];
+      if(peer?.kyberPk)try{await sendViaRelay(item.to,peer.kyberPk,item.data,item.meta);}catch{OQ.push(item);}
+    } else {
+      const p=PEERS[item.to];
+      if(p?.kyberPk)try{await nostrPub(item.to,p.kyberPk,item.op,4);}catch{OQ.push(item);}
+    }
+  }
+  if(!OQ.length)document.getElementById('obar').classList.remove('on');
+  iStat();
+}
+
+function onFile(event){
+  const file=event.target.files[0];if(!file||!AP)return;
+  event.target.value='';
+  sendMedia(AP,file).catch(e=>console.error('sendMedia fail',e));
+}
+
+// ── Navigation ──
+function goContacts(){sl('scC','act');sl('scChat','hr');sl('scCall','hr');sl('scS','hr');curScreen='contacts';na('nbC');}
+function goSettings(){sl('scS','act');sl('scC','hl');sl('scChat','hr');sl('scCall','hr');curScreen='settings';na('nbS');renderPeers();}
+function openChat(pub){
+  AP=pub;const p=PEERS[pub];if(!p)return;
+  p.lastRead=Date.now();savePeers();
+  document.getElementById('chatName').textContent=p.name;
+  document.getElementById('chatName').style.color=p.color;
+  document.getElementById('chatKey').textContent=pub;
+  document.getElementById('sbtn').disabled=false;
+  sl('scChat','act');sl('scC','hl');sl('scCall','hr');sl('scS','hr');
+  curScreen='chat';na('nbC');renderContacts();renderMsgs();
+}
+function showCallScreen(pub,status,cls){
+  const p=PEERS[pub];const color=p?.color||'var(--pq)';
+  const av=document.getElementById('callAv');av.textContent=p?.name[0].toUpperCase()||'?';
+  av.style.cssText=`width:92px;height:92px;border-radius:22px;display:flex;align-items:center;justify-content:center;font-family:var(--disp);font-size:40px;margin-bottom:16px;position:relative;z-index:1;background:${color}22;color:${color}`;
+  document.getElementById('callNm').textContent=p?.name||pub.slice(0,10);
+  setCallSt(status,cls);
+  sl('scCall','act');sl('scC','hl');sl('scChat','hl');sl('scS','hr');
+}
+function showIncoming(pub){
+  const p=PEERS[pub];const color=p?.color||'var(--pq)';
+  const av=document.getElementById('incAv');av.textContent=p?.name[0].toUpperCase()||'?';
+  av.style.cssText=`width:76px;height:76px;border-radius:18px;display:flex;align-items:center;justify-content:center;font-family:var(--disp);font-size:34px;margin:0 auto;background:${color}22;color:${color}`;
+  document.getElementById('incName').textContent=p?.name||pub.slice(0,10);
+  document.getElementById('incName').style.color=color;
+  document.getElementById('incoming').classList.add('show');
+}
+function setCallSt(t,cls){const el=document.getElementById('callSt');el.textContent=t;el.className='call-st'+(cls?' '+cls:'');}
+function sl(id,cls){document.getElementById(id).className='screen '+cls;}
+function na(id){document.querySelectorAll('.nb').forEach(b=>b.classList.remove('act'));document.getElementById(id).classList.add('act');}
+
+function openImg(url){document.getElementById('imgVImg').src=url;document.getElementById('imgV').classList.add('show');}
+function closeImg(){document.getElementById('imgV').classList.remove('show');}
+
+// ── Render ──
+function renderContacts(){
+  const el=document.getElementById('clist'),keys=Object.keys(PEERS);
+  if(!keys.length){el.innerHTML='<div class="no-c">Hələ kontakt yoxdur.<br><b>⚙</b> Ayarlardan peer əlavə et.</div>';return;}
+  el.innerHTML=keys.map(k=>{
+    const p=PEERS[k];const msgs=C.chat(NK.pub,k);
+    const last=msgs[msgs.length-1];const ur=msgs.filter(m=>m.from===k&&m.ts>(p.lastRead||0)).length;
+    const lt=last?(last.type==='text'?esc(last.payload?.text||'').slice(0,30):last.type==='image'?'🖼 Foto':last.type==='voice'?'🎙 Səs':'📎 Fayl'):'';
+    return `<div class="ci">
+      <div class="av" style="background:${p.color}22;color:${p.color}">${p.name[0].toUpperCase()}</div>
+      <div class="ci-i" onclick="openChat('${k}')">
+        <div class="ci-n" style="color:${p.color}">${p.name}</div>
+        <div class="ci-k">${k.slice(0,22)}...</div>
+        ${lt?`<div class="ci-last">${lt}</div>`:''}
+      </div>
+      <div class="ci-acts">
+        ${ur?`<div class="ubadge">${ur}</div>`:''}
+        <button class="ic-btn ic-chat" onclick="openChat('${k}')">💬</button>
+        <button class="ic-btn ic-call" onclick="startCall('${k}')">📞</button>
+      </div>
+    </div>`;}).join('');
+  showBadge();
+}
+
+function renderMsgs(){
+  const el=document.getElementById('msgs');if(!AP)return;
+  const ms=C.chat(NK.pub,AP);
+  if(!ms.length){el.innerHTML='<div class="empty-chat"><div class="eg">⬡</div><div class="et">RELAY</div><div class="es">Mətn · Foto · Səs · Zəng<br><b>ML-KEM-768 · P2P · Relay görmür</b></div></div>';return;}
+  el.innerHTML=ms.map(m=>{
+    const me=m.from===NK.pub;const p=PEERS[m.from];
+    const col=me?'var(--acc)':(p?.color||'var(--pq)');
+    const nm=me?'Mən':(p?.name||m.from.slice(0,10));
+    const t=new Date(m.ts).toLocaleTimeString('az',{hour:'2-digit',minute:'2-digit'});
+    const inQ=OQ.some(q=>q.op?.id===m.id||q.meta?.transferId===m.id);
+    const foot=`<div class="mf"><span>${t}</span>${me?`<span class="${inQ?'pc':'okc'}">${inQ?'⏳':'✓✓'}</span>`:'<span style="color:var(--pq);font-size:8px">PQ·P2P</span>'}</div>`;
+    const type=m.type||'text';
+    let body='';
+
+    if(type==='text'){
+      body=`<div class="mb">${esc(m.payload?.text||'')}</div>`;
+    }
+    else if(type==='image'){
+      const url=m.payload?._dataURL||'';
+      const prog=m.payload?._progress;
+      if(prog!==undefined&&prog<1){
+        body=`<div class="mb prog-bubble">
+          <div class="prog-name">🖼 ${esc(m.payload?.name||'Foto')}</div>
+          <div class="prog-bar-wrap"><div class="prog-bar" style="width:${Math.round(prog*100)}%"></div></div>
+          <div class="prog-info"><span>${Math.round((m.payload?.size||0)/1024)}KB</span><span>${Math.round(prog*100)}%</span></div>
+        </div>`;
+      } else if(url){
+        body=`<div class="mb" style="padding:4px"><img class="mb-img" src="${url}" onclick="openImg('${url}')" loading="lazy"/></div>`;
+      } else {
+        body=`<div class="mb"><span style="color:var(--mut)">🖼 Foto yüklənir...</span></div>`;
+      }
+    }
+    else if(type==='voice'){
+      const dur=m.payload?.duration||0;
+      const size=m.payload?.size||0;
+      const hasData=!!(m.payload?._dataURL||m.payload?.kem);
+      body=`<div class="mb mb-audio">
+        <button class="audio-play-btn" id="apb_${m.id}" onclick="playVoice('${m.id}')">${hasData?'▶':'⏳'}</button>
+        <div style="flex:1;display:flex;flex-direction:column;gap:4px">
+          <div class="audio-waveform">${Array.from({length:16},(_,i)=>`<div class="wf-bar" style="height:${6+Math.abs(Math.sin(i*0.8+m.ts%100))*20|0}px"></div>`).join('')}</div>
+          <div style="font-size:9px;color:var(--mut)">${dur?dur+'s':''} ${size?Math.round(size/1024)+'KB':''}</div>
+        </div>
+      </div>`;
+    }
+    else if(type==='file'){
+      const prog=m.payload?._progress;
+      const url=m.payload?._dataURL;
+      if(prog!==undefined&&prog<1){
+        body=`<div class="mb prog-bubble">
+          <div class="prog-name">📎 ${esc(m.payload?.name||'Fayl')}</div>
+          <div class="prog-bar-wrap"><div class="prog-bar" style="width:${Math.round(prog*100)}%"></div></div>
+          <div class="prog-info"><span>${Math.round((m.payload?.size||0)/1024)}KB</span><span>${Math.round(prog*100)}%</span></div>
+        </div>`;
+      } else {
+        body=`<div class="mb"><div style="display:flex;align-items:center;gap:8px;padding:4px 0">
+          <span style="font-size:20px">📎</span>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:12px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(m.payload?.name||'Fayl')}</div>
+            <div style="font-size:9px;color:var(--mut)">${Math.round((m.payload?.size||0)/1024)}KB</div>
+          </div>
+          ${url?`<a href="${url}" download="${m.payload?.name||'fayl'}" style="color:var(--acc2);font-size:18px">⬇</a>`:''}
+        </div></div>`;
+      }
+    }
+
+    return `<div class="mw ${me?'me':'them'}">
+      <div class="mh"><span style="color:${col};font-weight:600">${nm}</span></div>
+      ${body}${foot}
+    </div>`;
+  }).join('');
+  el.scrollTop=el.scrollHeight;
+}
+
+function renderPeers(){
+  const el=document.getElementById('peersDiv'),keys=Object.keys(PEERS);
+  document.getElementById('peerCount').textContent=keys.length;
+  if(!keys.length){el.innerHTML='<div style="font-size:11px;color:var(--dim)">Hələ peer yoxdur.</div>';return;}
+  el.innerHTML=keys.map(k=>{const p=PEERS[k];return`<div class="pr-row"><div class="av" style="width:36px;height:36px;border-radius:8px;background:${p.color}22;color:${p.color};font-size:16px">${p.name[0].toUpperCase()}</div><div class="pr-i"><div class="pr-n" style="color:${p.color}">${p.name}</div><div class="pr-k">${k}</div></div><button class="del-btn" onclick="delPeer('${k}')">✕</button></div>`;}).join('');
+}
+
+function showBadge(){const tot=Object.keys(PEERS).reduce((s,k)=>{const p=PEERS[k];return s+C.chat(NK.pub,k).filter(m=>m.from===k&&m.ts>(p.lastRead||0)).length;},0);const b=document.getElementById('navBadge');if(tot>0){b.style.display='flex';b.textContent=tot;}else b.style.display='none';}
+function iStat(){document.getElementById('sRelay').textContent=`${CONN.size}/3`;}
+function setRp(url,st){const el=document.getElementById('rp'+btoa(url).replace(/\W/g,''));if(el)el.className=`rp ${st}`;iStat();if(st==='ok'&&OQ.length)setTimeout(flushOQ,300);}
+
+async function copyBundle(){
+  const bundle=JSON.stringify({nostr:NK.pub,kyber:KKkeys.pk});
+  const btn=document.getElementById('copyBtn');
+  try{await navigator.clipboard.writeText(bundle);}
+  catch{const ta=document.createElement('textarea');ta.value=bundle;ta.style.cssText='position:fixed;opacity:0';document.body.appendChild(ta);ta.select();ta.setSelectionRange(0,99999);document.execCommand('copy');document.body.removeChild(ta);}
+  btn.textContent='✓  Kopyalandı!';btn.classList.add('copy-ok');
+  setTimeout(()=>{btn.textContent='📋  Key Bundle Kopyala (JSON)';btn.classList.remove('copy-ok');},2000);
+}
+
+document.getElementById('minp').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey&&window.innerWidth>600){e.preventDefault();sendTxt();}});
+function rsz(el){el.style.height='auto';el.style.height=Math.min(el.scrollHeight,120)+'px';}
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');}
+function rn(u){return u.split('/')[2].split('.').slice(-2).join('.');}
+
+boot();
+</script>
+</body>
+</html>
