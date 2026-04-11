@@ -527,18 +527,33 @@ async function onEv(ev){
 //           STUN+TURN for DataChannel (media transfers)
 // ══════════════════════════════════════════════════════
 
-// TURN-only: all call traffic relayed, real IP never exposed
-const ICE_CALL=[
-  {urls:'turn:openrelay.metered.ca:80',username:'openrelayproject',credential:'openrelayproject'},
-  {urls:'turn:openrelay.metered.ca:443',username:'openrelayproject',credential:'openrelayproject'},
-  {urls:'turn:openrelay.metered.ca:443?transport=tcp',username:'openrelayproject',credential:'openrelayproject'},
-  {urls:'turns:openrelay.metered.ca:443',username:'openrelayproject',credential:'openrelayproject'},
-];
-// For DataChannel (media): STUN first, TURN fallback — faster for same-network
-const ICE_DC=[
+// ── Cloudflare TURN — dynamic credentials (TTL: 24h) ──
+const CF_TURN_API='https://rtc.live.cloudflare.com/v1/turn/keys/5168e26778eef61b15d6901ecc210286/credentials/generate-ice-servers';
+const CF_TURN_TOKEN='461333bdc9d7c16a7293f2a01e08602819b040f37160bb181a17dfd878ce60d2';
+let _cfIceCache=null;
+
+async function getCFIce(){
+  const now=Date.now();
+  if(_cfIceCache&&now<_cfIceCache.exp)return _cfIceCache.servers;
+  try{
+    const r=await fetch(CF_TURN_API,{
+      method:'POST',
+      headers:{'Authorization':'Bearer '+CF_TURN_TOKEN,'Content-Type':'application/json'},
+      body:JSON.stringify({ttl:86400})
+    });
+    const d=await r.json();
+    const servers=d.iceServers||[];
+    _cfIceCache={servers,exp:now+82800000};
+    return servers;
+  }catch(e){
+    console.error('CF TURN fetch failed',e);
+    return [];
+  }
+}
+
+const ICE_STUN=[
   {urls:['stun:stun.l.google.com:19302','stun:stun1.l.google.com:19302']},
   {urls:'stun:stun.cloudflare.com:3478'},
-  ...ICE_CALL,
 ];
 
 class PCManager{
@@ -549,11 +564,12 @@ class PCManager{
   async init(peerPub,withAudio){
     this.peer=peerPub;this.iceQ=[];this.remoteSet=false;
     if(this.pc)try{this.pc.close();}catch{}
-    // Calls: TURN-only + relay policy = IP fully hidden, works across any network
-    // DataChannel: STUN first for speed, TURN fallback for cross-network
+    const cfServers=await getCFIce();
+    // Calls: CF TURN-only + relay policy = IP fully hidden, works across any network
+    // DataChannel: STUN first for speed, CF TURN fallback
     const cfg=withAudio
-      ?{iceServers:ICE_CALL,iceTransportPolicy:'relay'}
-      :{iceServers:ICE_DC};
+      ?{iceServers:cfServers.length?cfServers:ICE_STUN,iceTransportPolicy:cfServers.length?'relay':'all'}
+      :{iceServers:[...ICE_STUN,...cfServers]};
     this.pc=new RTCPeerConnection(cfg);
     if(withAudio){
       const stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true},video:false});
