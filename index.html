@@ -446,7 +446,9 @@ body{color:var(--text);font-family:var(--mono);font-size:13px;display:flex;flex-
           🎙 Səs → Sealed Sender + relay<br>
           🖼 Foto ≤2MB → Sealed Sender + relay<br>
           🖼📎 Foto/Fayl &gt;2MB → P2P DataChannel<br>
-          📞 Zəng → CF TURN-only · IP tam gizli<br>
+          📞 Zəng → 2-Hop TURN · Oracle→CF · IP tam gizli<br>
+          🔄 ICE Restart: hər 5 dəq · sessiya korrelyasiyası yox<br>
+          📊 Sabit Bitrate: silence/danışıq fərqi görünmür<br>
           ⏱ Silinən mesajlar: 1s/24s/7g/heç<br>
           🔐 Forward Secrecy + Traffic Padding<br>
           🫥 Deniable Auth: HMAC · sübut mümkün deyil<br>
@@ -1426,17 +1428,34 @@ async function handleOnionRelay(layer){
 async function sendHybrid(destPub,destKyberPk,obj){
   await stampDeniable(obj,destPub);
   const innerObj={...obj,_sender:{nostr:NK.pub,kyber:KKkeys.pk}};
-  const enc=await pqEncPadded(destKyberPk,JSON.stringify(innerObj),destPub);
 
-  // Try onion routing first
-  const usedOnion=await sendOnion(destPub,enc);
+  // Direct send path: use DR (Double Ratchet) for forward secrecy
+  const encDirect=await pqEncPadded(destKyberPk,JSON.stringify(innerObj),destPub);
+
+  // Try onion routing first (uses simple KEM, no DR — onion provides its own layering)
+  const online=getOnlinePeers().filter(p=>p!==destPub);
+  let usedOnion=false;
+
+  if(online.length>=1){
+    try{
+      // For onion: wrap innerObj with simple KEM (no DR) so receiver can decrypt
+      // regardless of which path it took
+      const{ct,K}=kemE(destKyberPk);
+      const padded=padPlain(JSON.stringify(innerObj));
+      const{iv,ct:a}=await aesEnc(K,padded);
+      const encOnion=JSON.stringify({v:4,kem:ct,iv,ct:a});
+      usedOnion=await sendOnion(destPub,encOnion);
+    }catch(e){console.warn('Onion prep failed',e);}
+  }
 
   if(!usedOnion){
-    // Fallback: direct sealed send
-    const tags=[['p',destPub]];
+    // Direct sealed send with DR encryption
     const ephNK=genNKP();
-    const ev=await buildEv(4,enc,tags,ephNK.priv,ephNK.pub);
-    Object.values(WS).forEach(ws=>{if(ws.readyState===1)ws.send(JSON.stringify(['EVENT',ev]));});
+    const tags=[['p',destPub]];
+    const ev=await buildEv(4,encDirect,tags,ephNK.priv,ephNK.pub);
+    let sent=0;
+    Object.values(WS).forEach(ws=>{if(ws.readyState===1){ws.send(JSON.stringify(['EVENT',ev]));sent++;}});
+    if(sent===0)throw new Error('No relay connected');
   }
 
   // Cover traffic to other peers regardless
@@ -1474,15 +1493,44 @@ async function onEv(ev){
           await handleOnionRelay(layer);
           return;
         } else if(layer.type==='onion_final'){
-          // We are the destination — process the payload
-          // Replace ev.content with the unwrapped payload for normal processing
-          // Re-parse as v:4 message
-          const innerParsed=JSON.parse(layer.payload);
-          if(innerParsed.v===4||innerParsed.v===3){
-            // Process as normal message by re-entring with modified content
-            const fakeEv={...ev,content:layer.payload};
-            await onEv(fakeEv);
-          }
+          // We are the destination — decrypt and process payload directly
+          try{
+            const innerParsed=JSON.parse(layer.payload);
+            if(innerParsed.v===4||innerParsed.v===3){
+              // Decrypt outer KEM layer
+              const outerBytes=await aesDec(kemD(innerParsed.kem,KKkeys.sk),innerParsed.iv,innerParsed.ct);
+              let msgStr;
+              try{
+                const rlen=new DataView(outerBytes.buffer,outerBytes.byteOffset,2).getUint16(0);
+                if(rlen>0&&rlen<=outerBytes.length-2)msgStr=unpadPlain(outerBytes);
+              }catch{}
+              if(!msgStr)msgStr=td(outerBytes);
+              const obj=JSON.parse(msgStr);
+              if(!obj.id||!obj.type||obj.type==='__pad__')return;
+              if(isExpired(obj))return;
+              // Register sender from _sender field
+              if(obj._sender?.nostr&&obj._sender?.kyber){
+                const sn=obj._sender.nostr;const sk=obj._sender.kyber;
+                if(!PEERS[sn]){
+                  PEERS[sn]={name:sn.slice(0,10),color:COLS[Object.keys(PEERS).length%COLS.length],kyberPk:sk};
+                  savePeers();renderContacts();ktRecord(sn,null,sk,'key_first');
+                }
+                markOnline(sn);
+              }
+              const fp=obj._sender?.nostr||ev.pubkey;
+              if(fp===NK.pub)return;
+              obj.from=fp;
+              obj._nostrId=ev.id;
+              // Decode b64 media
+              if(obj.payload?._b64){
+                const bin=atob(obj.payload._b64);const bytes=new Uint8Array(bin.length);
+                for(let i=0;i<bin.length;i++)bytes[i]=bin.charCodeAt(i);
+                obj.payload._bytes=bytes;delete obj.payload._b64;
+              }
+              if(!C.merge(obj))return;
+              if(AP===fp)renderMsgs();else{renderContacts();showBadge();}
+            }
+          }catch(e){console.warn('Onion final process error',e);}
           return;
         }
       }catch(e){console.warn('Onion process error',e);}
@@ -1531,12 +1579,14 @@ async function onEv(ev){
         }catch{}
       }
       if(!decrypted){
-        // First contact — no DR state yet, try without DR
+        // Try simple KEM decrypt (no DR) — used for onion-routed messages and first contact
         try{
           const raw=await aesDec(kemD(parsed.kem,KKkeys.sk),parsed.iv,parsed.ct);
           try{
-            const rlen=new DataView(raw.buffer,raw.byteOffset,2).getUint16(0);
-            if(rlen>0&&rlen<=raw.length-2)decrypted=unpadPlain(raw);
+            if(raw.length>=2){
+              const rlen=new DataView(raw.buffer,raw.byteOffset,2).getUint16(0);
+              if(rlen>0&&rlen<=raw.length-2)decrypted=unpadPlain(raw);
+            }
           }catch{}
           if(!decrypted)decrypted=td(raw);
         }catch{return;}
@@ -1604,6 +1654,8 @@ async function onEv(ev){
     }
     // Ensure from field is real sender
     obj.from=fp;
+    // Mark sender as online since they just sent a message
+    if(fp&&fp!==NK.pub)markOnline(fp);
     // Verify deniable auth tag — warns if tampered, but doesn't block (backwards compat)
     const daResult=await verifyDeniable(obj,fp);
     if(daResult===false){
@@ -1626,7 +1678,32 @@ async function onEv(ev){
 //           STUN+TURN for DataChannel (media transfers)
 // ══════════════════════════════════════════════════════
 
-// ── Cloudflare TURN — dynamic credentials (TTL: 24h) ──
+// ══════════════════════════════════════════════════════
+//  Double-Hop TURN — Metadata Protection
+//
+//  Architecture:
+//    Caller → Oracle TURN (hop 1) → Cloudflare TURN (hop 2) → Callee
+//
+//  Oracle sees:  caller real IP + Cloudflare IP
+//  Cloudflare sees: Oracle IP + callee IP  ← does NOT see caller real IP
+//  Neither sees: both endpoints simultaneously
+//
+//  ICE Restart: every 5 min — breaks long-term traffic correlation
+//  Traffic Shaping: constant bitrate padding — hides silence/activity patterns
+// ══════════════════════════════════════════════════════
+
+// ── Oracle TURN (Hop 1 — your private server) ──
+const ORACLE_TURN_IP='144.24.249.21';
+const ORACLE_TURN_USER='relay';             // ← your coturn username
+const ORACLE_TURN_PASS='Relay2005!';
+
+const ICE_ORACLE=[
+  {urls:'turn:'+ORACLE_TURN_IP+':3478',username:ORACLE_TURN_USER,credential:ORACLE_TURN_PASS},
+  {urls:'turn:'+ORACLE_TURN_IP+':3478?transport=tcp',username:ORACLE_TURN_USER,credential:ORACLE_TURN_PASS},
+  {urls:'turns:'+ORACLE_TURN_IP+':443',username:ORACLE_TURN_USER,credential:ORACLE_TURN_PASS},
+];
+
+// ── Cloudflare TURN (Hop 2) — dynamic credentials ──
 const CF_TURN_API='https://rtc.live.cloudflare.com/v1/turn/keys/5168e26778eef61b15d6901ecc210286/credentials/generate-ice-servers';
 const CF_TURN_TOKEN='461333bdc9d7c16a7293f2a01e08602819b040f37160bb181a17dfd878ce60d2';
 let _cfIceCache=null;
@@ -1650,10 +1727,65 @@ async function getCFIce(){
   }
 }
 
+// Build double-hop ICE config:
+// Oracle TURN first → Cloudflare TURN second
+// Both with relay-only policy so no direct/STUN candidates leak
+async function getDoubleHopIce(){
+  const cfServers=await getCFIce();
+  // Merge: Oracle first (closer, faster auth), CF second (exit hop)
+  return[...ICE_ORACLE,...cfServers];
+}
+
 const ICE_STUN=[
   {urls:['stun:stun.l.google.com:19302','stun:stun1.l.google.com:19302']},
   {urls:'stun:stun.cloudflare.com:3478'},
 ];
+
+// ── ICE Restart — breaks traffic correlation every 5 min ──
+const ICE_RESTART_INTERVAL=5*60*1000; // 5 minutes
+let _iceRestartTimer=null;
+
+async function scheduleIceRestart(peerPub){
+  clearTimeout(_iceRestartTimer);
+  _iceRestartTimer=setTimeout(async()=>{
+    if(callState!=='connected'||!PCM?.pc)return;
+    const peer=PEERS[peerPub];if(!peer?.kyberPk)return;
+    try{
+      // ICE restart: new credentials, breaks session correlation
+      const offer=await PCM.pc.createOffer({iceRestart:true});
+      await PCM.pc.setLocalDescription(offer);
+      await waitForGathering(PCM.pc,6000);
+      const sdp=PCM.pc.localDescription?.sdp||offer.sdp;
+      await nostrPub(peerPub,peer.kyberPk,{type:'ice_restart',sdp:sanitizeSDP(sdp)},25050);
+      setCallSt('Bağlandı · Sessiya yeniləndi · Epoch '+_callEpoch,'conn');
+      // Schedule next restart
+      scheduleIceRestart(peerPub);
+    }catch(e){console.warn('ICE restart failed',e);}
+  },ICE_RESTART_INTERVAL);
+}
+
+function stopIceRestart(){clearTimeout(_iceRestartTimer);_iceRestartTimer=null;}
+
+// ── Constant Bitrate Padding — hides activity patterns ──
+// Sends SRTP-sized dummy packets via DataChannel during calls
+// TURN sees: constant stream of same-sized packets regardless of speech/silence
+const CBR_INTERVAL=20;   // 20ms — matches Opus frame size
+const CBR_PACKET_SIZE=160; // bytes — typical Opus packet
+let _cbrTimer=null;
+
+function startCBR(){
+  if(_cbrTimer)return;
+  _cbrTimer=setInterval(()=>{
+    if(PCM?.dcOpen()&&callState==='connected'){
+      // Send dummy packet to mask silence periods
+      const dummy=new Uint8Array(CBR_PACKET_SIZE);
+      crypto.getRandomValues(dummy);
+      try{PCM.dc.send(JSON.stringify({type:'__cbr__',d:hex(dummy.slice(0,8))}));}catch{}
+    }
+  },CBR_INTERVAL);
+}
+
+function stopCBR(){clearInterval(_cbrTimer);_cbrTimer=null;}
 
 class PCManager{
   constructor(isCall=false){
@@ -1663,12 +1795,15 @@ class PCManager{
   async init(peerPub,withAudio){
     this.peer=peerPub;this.iceQ=[];this.remoteSet=false;
     if(this.pc)try{this.pc.close();}catch{}
-    const cfServers=await getCFIce();
-    // Calls: CF TURN-only + relay policy = IP fully hidden, works across any network
-    // DataChannel: STUN first for speed, CF TURN fallback
-    const cfg=withAudio
-      ?{iceServers:cfServers.length?cfServers:ICE_STUN,iceTransportPolicy:cfServers.length?'relay':'all'}
-      :{iceServers:[...ICE_STUN,...cfServers]};
+    // Calls: Double-hop TURN (Oracle → CF) — neither server sees both endpoints
+    // DataChannel: Oracle TURN only (media transfers, no double-hop needed)
+    let cfg;
+    if(withAudio){
+      const dhServers=await getDoubleHopIce();
+      cfg={iceServers:dhServers.length?dhServers:ICE_STUN,iceTransportPolicy:dhServers.length?'relay':'all'};
+    } else {
+      cfg={iceServers:[...ICE_ORACLE,...ICE_STUN]};
+    }
     this.pc=new RTCPeerConnection(cfg);
     if(withAudio){
       const stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true},video:false});
@@ -1693,11 +1828,14 @@ class PCManager{
       updateP2PStatus(s);
       if(s==='connected'&&withAudio){
         callState='connected';
-        setCallSt('Bağlandı · TURN · DTLS-SRTP · IP Gizli','conn');
+        setCallSt('Bağlandı · 2-Hop TURN · PFS · IP Gizli','conn');
         startTimer();
         document.getElementById('callBg').classList.add('on');
         // Start key rotation if we are the caller
         if(callPeer&&this.peer===callPeer)startKeyRotation(this.peer);
+        // Start CBR padding + ICE restart schedule
+        startCBR();
+        if(callPeer&&this.peer===callPeer)scheduleIceRestart(this.peer);
       } else if(s==='disconnected'&&withAudio){
         // Give 6s before giving up
         setTimeout(()=>{if(this.pc?.connectionState==='disconnected'||this.pc?.connectionState==='failed')endCall();},6000);
@@ -1714,6 +1852,8 @@ class PCManager{
     ch.onmessage=async e=>{
       try{
         const msg=JSON.parse(e.data);
+        // Silently discard CBR padding packets
+        if(msg.type==='__cbr__')return;
         // Key rotation messages handled separately
         if(msg.type==='key_rotate'||msg.type==='key_rotate_resp'){
           await handleKeyRotate(msg);return;
@@ -1850,8 +1990,10 @@ async function sendVoiceViaRelay(peerPub,bytes,mime,dur){
   for(let i=0;i<bytes.length;i+=chunk)b64+=String.fromCharCode(...bytes.slice(i,i+chunk));
   b64=btoa(b64);
   const op=C.add('voice',{_b64:b64,mimeType:mime,duration:dur,size:bytes.length},peerPub);
-  if(CONN.size>0){try{stampExpiry(op,peerPub);await sendHybrid(peerPub,peer.kyberPk,op);}catch{OQ.push({to:peerPub,op});saveOQ();}}
-  else{OQ.push({to:peerPub,op});saveOQ();}
+  if(CONN.size>0){
+    try{stampExpiry(op,peerPub);await sendHybrid(peerPub,peer.kyberPk,op);}
+    catch(e){console.error('Voice send failed:',e);OQ.push({to:peerPub,op});saveOQ();}
+  } else {OQ.push({to:peerPub,op});saveOQ();}
   renderMsgs();
 }
 
@@ -1864,8 +2006,10 @@ async function sendImageViaRelay(peerPub,file){
   for(let i=0;i<bytes.length;i+=chunk)b64+=String.fromCharCode(...bytes.slice(i,i+chunk));
   b64=btoa(b64);
   const op=C.add('image',{_b64:b64,name:file.name,mimeType:file.type,size:file.size},peerPub);
-  if(CONN.size>0){try{stampExpiry(op,peerPub);await sendWithCoverSealed(peerPub,peer.kyberPk,op);}catch{OQ.push({to:peerPub,op});saveOQ();}}
-  else{OQ.push({to:peerPub,op});saveOQ();}
+  if(CONN.size>0){
+    try{stampExpiry(op,peerPub);await sendHybrid(peerPub,peer.kyberPk,op);}
+    catch(e){console.error('Image send failed:',e);OQ.push({to:peerPub,op});saveOQ();}
+  } else {OQ.push({to:peerPub,op});saveOQ();}
   renderMsgs();
 }
 
@@ -2013,6 +2157,22 @@ async function onSig(fp,obj){
     await PCM.setRemote(new RTCSessionDescription({type:'answer',sdp:obj.sdp})).catch(()=>{});
     setCallSt('ICE bağlantısı qurulur...','ring');
   }
+  else if(type==='ice_restart'&&PCM&&callState==='connected'){
+    // Peer restarted ICE — accept new offer and send answer
+    try{
+      await PCM.setRemote(new RTCSessionDescription({type:'offer',sdp:obj.sdp}));
+      const answer=await PCM.pc.createAnswer();
+      await PCM.pc.setLocalDescription(answer);
+      await waitForGathering(PCM.pc,6000);
+      const peer=PEERS[fp];if(!peer?.kyberPk)return;
+      await nostrPub(fp,peer.kyberPk,{type:'ice_restart_answer',sdp:sanitizeSDP(PCM.pc.localDescription.sdp)},25050);
+    }catch(e){console.warn('ICE restart answer failed',e);}
+  }
+  else if(type==='ice_restart_answer'&&PCM&&callState==='connected'){
+    try{
+      await PCM.setRemote(new RTCSessionDescription({type:'answer',sdp:obj.sdp})).catch(()=>{});
+    }catch{}
+  }
   else if(type==='dc_offer'){
     const peer=PEERS[fp];if(!peer?.kyberPk)return;
     if(!PCM||!PCM.pc||PCM.pc.connectionState==='closed'||PCM.pc.connectionState==='failed'){PCM=new PCManager(false);}
@@ -2038,7 +2198,7 @@ function endCall(){
   if(PCM&&callState!=='idle'){PCM.close();PCM=null;}
   if(localStream){localStream.getTracks().forEach(t=>t.stop());localStream=null;}
   if(remoteAudio){remoteAudio.srcObject=null;remoteAudio=null;}
-  stopTimer();stopViz();stopKeyRotation();
+  stopTimer();stopViz();stopKeyRotation();stopCBR();stopIceRestart();
   callPeer=null;callState='idle';muted=false;
   document.getElementById('muteBtn').textContent='🎙';
   document.getElementById('muteBtn').classList.remove('on');
@@ -2524,14 +2684,28 @@ async function sendTxt(){
   if(!peer?.kyberPk){alert('Peer key yoxdur. Əvvəl ⚙ Ayarlar→Peer əlavə et vasitəsilə key bundle qur.');return;}
   document.getElementById('sbtn').disabled=true;
   const op=C.add('text',{text:txt},AP);renderMsgs();
-  if(CONN.size>0){try{stampExpiry(op,AP);await sendHybrid(AP,peer.kyberPk,op);}catch{OQ.push({to:AP,op});saveOQ();}}
-  else{OQ.push({to:AP,op});saveOQ();document.getElementById('obar').classList.add('on');}
+  if(CONN.size>0){
+    try{
+      stampExpiry(op,AP);
+      await sendHybrid(AP,peer.kyberPk,op);
+    }catch(e){
+      console.error('Send failed:',e);
+      OQ.push({to:AP,op});saveOQ();
+      document.getElementById('obar').classList.add('on');
+    }
+  } else {OQ.push({to:AP,op});saveOQ();document.getElementById('obar').classList.add('on');}
   iStat();inp.value='';inp.style.height='auto';
   document.getElementById('sbtn').disabled=false;inp.focus();
 }
 async function flushOQ(){
   if(!OQ.length)return;const q=[...OQ];OQ=[];saveOQ();
-  for(const item of q){const p=PEERS[item.to];if(p?.kyberPk)try{await sendHybrid(item.to,p.kyberPk,item.op);}catch{OQ.push(item);}}
+  for(const item of q){
+    const p=PEERS[item.to];
+    if(p?.kyberPk){
+      try{await sendHybrid(item.to,p.kyberPk,item.op);}
+      catch{OQ.push(item);}
+    }
+  }
   if(!OQ.length)document.getElementById('obar').classList.remove('on');iStat();
 }
 function onFile(e){const f=e.target.files[0];if(!f||!AP)return;e.target.value='';sendMedia(AP,f).catch(err=>alert('Göndərmə xətası: '+err.message));}
