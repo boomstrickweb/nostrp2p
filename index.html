@@ -1113,8 +1113,11 @@ async function _hkdfKey(raw){
   const base=await crypto.subtle.importKey('raw',raw,{name:'HKDF'},false,['deriveKey']);
   return crypto.subtle.deriveKey({name:'HKDF',hash:'SHA-256',salt:new Uint8Array(32),info:new Uint8Array(0)},base,{name:'AES-GCM',length:256},false,['encrypt','decrypt']);
 }
+// MessageChannel yield — setTimeout(0)-dan 5x sürətli, UI-i azad edir
+function yieldUI(){return new Promise(r=>{const ch=new MessageChannel();ch.port1.onmessage=r;ch.port2.postMessage(0);});}
+
 async function pqEncBin(pkH,bytes){
-  await new Promise(r=>setTimeout(r,0)); // yield to UI
+  await yieldUI(); // kemE ~40ms CPU — yield əvvəl
   const{ct,K}=kemE(pkH);
   const key=await _hkdfKey(K);
   const iv=rnd(12);
@@ -1123,6 +1126,7 @@ async function pqEncBin(pkH,bytes){
   return{kem:ct,iv:hex(iv),ct:hex(new Uint8Array(enc))};
 }
 async function pqDecBin(skH,kem,iv,ct){
+  await yieldUI(); // kemD ~40ms CPU — yield əvvəl
   const K=kemD(kem,skH);
   const key=await _hkdfKey(K);
   return new Uint8Array(await crypto.subtle.decrypt({name:'AES-GCM',iv:fhex(iv)},key,fhex(ct)));
@@ -1409,8 +1413,7 @@ async function sendHybrid(destPub,destKyberPk,obj){
   const plaintext=JSON.stringify(innerObj);
 
   // Encrypt with ML-KEM + AES
-  // Yield to UI thread before CPU-intensive KEM operation
-  await new Promise(r=>setTimeout(r,0));
+  await yieldUI();
   const{ct,K}=kemE(destKyberPk);
   const padded=padPlain(plaintext);
   const{iv,ct:a}=await aesEnc(K,padded);
